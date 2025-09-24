@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Segera Hadir - Marhayu</title>
+    <link rel="shortcut icon" href="assets/marhayu-white.png" type="image/x-icon">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .timer-box {
+            background: white;
+            border-radius: 0.75rem;
+            padding: 1rem 1.5rem;
+            border: 1px solid #e5e7eb;
+            min-width: 80px;
+        }
+        .timer-number {
+            font-weight: 900;
+            color: #111827;
+        }
+        .timer-label {
+            color: #6b7280;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        .content-enter-animation {
+            animation: fadeInScaleUp 0.8s ease-out forwards;
+            opacity: 0;
+        }
+        @keyframes fadeInScaleUp {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 text-center">
+
+    <main class="p-6 md:p-8 content-enter-animation">
+        <img src="https://mage.mzili.my.id/uploads/img_68c50e457ef002.30239660.png" alt="Logo Marhayu" class="h-12 md:h-16 mx-auto mb-8">
+        
+        <h1 class="text-3xl sm:text-4xl md:text-5xl font-black text-gray-900 tracking-tight">Kami Sedang Mempersiapkan Sesuatu</h1>
+        <p class="mt-4 text-base md:text-lg text-gray-600 max-w-2xl mx-auto">
+            Platform Marhayu sedang dalam tahap akhir pengembangan. Kami bekerja keras untuk memberikan pengalaman terbaik untuk Anda. Tandai kalender Anda!
+        </p>
+
+        <div id="countdown-container" class="mt-10 flex flex-wrap justify-center items-center gap-4 md:gap-6">
+            <div class="timer-box">
+                <p id="days" class="timer-number text-4xl md:text-5xl">00</p>
+                <p class="timer-label">Hari</p>
+            </div>
+            <div class="timer-box">
+                <p id="hours" class="timer-number text-4xl md:text-5xl">00</p>
+                <p class="timer-label">Jam</p>
+            </div>
+            <div class="timer-box">
+                <p id="minutes" class="timer-number text-4xl md:text-5xl">00</p>
+                <p class="timer-label">Menit</p>
+            </div>
+            <div class="timer-box">
+                <p id="seconds" class="timer-number text-4xl md:text-5xl">00</p>
+                <p class="timer-label">Detik</p>
+            </div>
+        </div>
+
+        <div class="mt-12 flex justify-center items-center gap-3">
+            <svg width="24" height="24" viewBox="0 0 24 18" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-6 h-auto">
+                <path d="M0 0H24V18H0V0Z" fill="black"/>
+                <path d="M0 6H24V18H0V6Z" fill="white"/>
+                <path d="M0 12H24V18H0V12Z" fill="#34A853"/>
+                <path d="M0 0L12 9L0 18V0Z" fill="#EA4335"/>
+            </svg>
+            <p class="font-bold text-gray-700 tracking-wider">TOGETHER WITH PALESTINE</p>
+        </div>
+    </main>
+
+    <script>
+        const countDownDate = new Date("Oct 20, 2025 00:00:00").getTime();
+
+        const countdownInterval = setInterval(function() {
+            const now = new Date().getTime();
+            const distance = countDownDate - now;
+
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+            const formatTime = (time) => time < 10 ? `0${time}` : time;
+
+            if (document.getElementById("days")) {
+                document.getElementById("days").innerHTML = formatTime(days);
+                document.getElementById("hours").innerHTML = formatTime(hours);
+                document.getElementById("minutes").innerHTML = formatTime(minutes);
+                document.getElementById("seconds").innerHTML = formatTime(seconds);
+            }
+
+            if (distance < 0) {
+                clearInterval(countdownInterval);
+                const countdownContainer = document.getElementById("countdown-container");
+                if (countdownContainer) {
+                    countdownContainer.innerHTML = '<p class="text-2xl font-bold text-green-600">Selamat Datang di Marhayu!</p>';
+                }
+            }
+        }, 1000);
+    </script>
+
+</body>
+</html>
+

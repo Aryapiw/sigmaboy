@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notifikasi - Marhayu</title>
+    <link rel="shortcut icon" href="assets/marhayu-white.png" type="image/x-icon">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:wght@400;700&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script>
+        // Inisialisasi Tailwind dark mode
+        tailwind.config = {
+          darkMode: 'class',
+        }
+    </script>
+    <style>
+        html, body { 
+            height: 100%;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        .sidebar-nav::-webkit-scrollbar, #notifications-list::-webkit-scrollbar { display: none; }
+        .sidebar-nav, #notifications-list { -ms-overflow-style: none; scrollbar-width: none; }
+         .notification-badge {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            width: 0.75rem;
+            height: 0.75rem;
+            border-radius: 9999px;
+            background-color: #ef4444;
+            border: 2px solid white;
+        }
+        .dark .notification-badge { border-color: #0f172a; }
+        .skeleton {
+            background-color: #e5e7eb;
+            border-radius: 0.5rem;
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        .dark .skeleton { background-color: #334155; }
+        @keyframes pulse {
+            50% { opacity: .5; }
+        }
+        .notification-enter-animation {
+            animation: fadeInSlideUp 0.5s ease-out forwards;
+            opacity: 0;
+        }
+        @keyframes fadeInSlideUp {
+            from {
+                opacity: 0;
+                transform: translateY(15px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .interactive-btn {
+            transition: transform 0.1s ease-out, background-color 0.2s ease;
+        }
+        .interactive-btn:active {
+            transform: scale(0.95);
+        }
+        /* Custom scrollbar for dark mode */
+        main::-webkit-scrollbar {
+            width: 12px;
+        }
+        .dark main::-webkit-scrollbar-track {
+            background: #0f172a; /* slate-900 */
+        }
+        .dark main::-webkit-scrollbar-thumb {
+            background-color: #334155; /* slate-700 */
+            border-radius: 6px;
+            border: 3px solid #0f172a; /* slate-900 */
+        }
+    </style>
+</head>
+<body class="bg-white text-black dark:bg-slate-900 dark:text-slate-200 transition-colors duration-300">
+
+    <div class="container mx-auto max-w-4xl flex flex-row md:gap-8 h-full">
+        <!-- Sidebar -->
+        <aside class="hidden md:block w-[280px] flex-shrink-0 pt-8 pr-4">
+             <a href="index.html"><img src="/assets/marhayu-white.png" alt="Logo Marhayu" class="h-10 mb-8"></a>
+            <nav class="space-y-1 text-lg sidebar-nav">
+                <a href="index.html" class="flex items-center space-x-3 p-3 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors">
+                    <i class="bi bi-house-door text-2xl"></i><span>Beranda</span>
+                </a>
+                <a href="search.html" class="flex items-center space-x-3 p-3 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors">
+                    <i class="bi bi-search text-2xl"></i><span>Pencarian</span>
+                </a>
+                 <a href="notifications.html" class="relative flex items-center space-x-3 p-3 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors font-bold text-black dark:text-white">
+                    <i class="bi bi-bell-fill text-2xl"></i><span>Notifikasi</span>
+                    <span id="notification-badge-sidebar" class="hidden notification-badge"></span>
+                </a>
+                <a href="#" id="profile-link-sidebar" class="flex items-center space-x-3 p-3 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors">
+                    <i class="bi bi-person text-2xl"></i><span>Profil</span>
+                </a>
+            </nav>
+            <button id="logout-button" class="mt-8 w-full bg-black text-white py-2 rounded-full font-semibold hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200 transition-colors interactive-btn">Keluar</button>
+        </aside>
+
+        <!-- Main Notification Content -->
+        <main class="w-full min-w-0 md:border-l md:border-r border-gray-200 dark:border-slate-700 h-full flex flex-col">
+             <header class="sticky top-0 z-10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-4 border-b border-gray-200 dark:border-slate-700 flex justify-between items-center flex-shrink-0">
+                 <h1 class="text-xl font-bold md:hidden"><img src="/assets/marhayu-white.png" alt="Logo Marhayu" class="h-8 mx-auto"></h1>
+                 <h1 class="text-xl font-bold hidden md:block">Notifikasi</h1>
+                <button id="mark-all-read-btn" class="text-sm text-blue-500 hover:underline disabled:text-gray-400 dark:disabled:text-slate-500 disabled:no-underline disabled:cursor-not-allowed interactive-btn">Tandai semua dibaca</button>
+            </header>
+
+            <div id="notifications-list" class="flex-grow overflow-y-auto">
+                
+            </div>
+        </main>
+    </div>
+    
+    <!-- Bottom Navigation Bar (Mobile) -->
+    <nav id="bottom-nav" class="md:hidden fixed bottom-0 w-full bg-white border-t border-black/10 dark:bg-slate-900 dark:border-slate-700/50 z-20">
+        <div class="flex justify-around items-center h-16">
+            <a href="index.html" class="flex flex-col items-center justify-center text-gray-500 dark:text-slate-400 hover:text-black dark:hover:text-white">
+                <i class="bi bi-house-door text-2xl"></i>
+            </a>
+            <a href="search.html" class="flex flex-col items-center justify-center text-gray-500 dark:text-slate-400 hover:text-black dark:hover:text-white">
+                <i class="bi bi-search text-2xl"></i>
+            </a>
+            <a href="notifications.html" class="relative flex flex-col items-center justify-center text-black dark:text-white hover:text-black dark:hover:text-white">
+                <i class="bi bi-bell-fill text-2xl"></i>
+                <span id="notification-badge-bottom" class="hidden notification-badge"></span>
+            </a>
+            <a href="#" id="profile-link-bottom" class="flex flex-col items-center justify-center text-gray-500 dark:text-slate-400 hover:text-black dark:hover:text-white">
+                <i class="bi bi-person text-2xl"></i>
+            </a>
+        </div>
+    </nav>
+
+
+    <script>
+        // --- THEME SWITCHER LOGIC ---
+        function applyTheme(theme) {
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        }
+        const savedTheme = localStorage.getItem('theme');
+        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (savedTheme === 'dark' || (!savedTheme && systemPrefersDark)) {
+            applyTheme('dark');
+        } else {
+            applyTheme('light');
+        }
+        // --- END THEME SWITCHER LOGIC ---
+
+        const { createClient } = supabase;
+        let db; 
+        let currentUser = null;
+        const notificationsList = document.getElementById('notifications-list');
+        const markAllReadBtn = document.getElementById('mark-all-read-btn');
+        
+        function highlightActiveNav() {
+            // Mobile bottom nav
+            const bottomNavLinks = document.querySelectorAll('#bottom-nav a');
+            bottomNavLinks.forEach(link => {
+                const icon = link.querySelector('i');
+                if (link.href.endsWith('notifications.html')) {
+                    link.classList.remove('text-gray-500', 'dark:text-slate-400');
+                    link.classList.add('text-black', 'dark:text-white');
+                    if (icon) icon.className = 'bi bi-bell-fill text-2xl';
+                } else {
+                    link.classList.add('text-gray-500', 'dark:text-slate-400');
+                    link.classList.remove('text-black', 'dark:text-white');
+                    if (icon && icon.classList.contains('bi-house-door-fill')) icon.className = 'bi bi-house-door text-2xl';
+                    if (icon && icon.classList.contains('bi-search-heart-fill')) icon.className = 'bi bi-search text-2xl';
+                }
+            });
+
+            // Desktop sidebar nav
+            const sidebarLinks = document.querySelectorAll('aside nav a');
+            sidebarLinks.forEach(link => {
+                 if(link.href.endsWith('notifications.html')) {
+                     link.classList.add('font-bold', 'text-black', 'dark:text-white');
+                     const icon = link.querySelector('i');
+                     if (icon) icon.className = 'bi bi-bell-fill text-2xl';
+                 } else {
+                     link.classList.remove('font-bold', 'text-black', 'dark:text-white');
+                      const icon = link.querySelector('i');
+                      if(icon && icon.classList.contains('bi-house-door-fill')) icon.className = 'bi bi-house-door text-2xl';
+                      if(icon && icon.classList.contains('bi-search-heart-fill')) icon.className = 'bi bi-search text-2xl';
+                 }
+             })
+        }
+        
+        function createSkeletonNotification() {
+            const div = document.createElement('div');
+            div.className = 'flex items-start p-4 border-b border-gray-200 dark:border-slate-700';
+            div.innerHTML = `
+                <div class="w-10 mr-4"><div class="w-8 h-8 rounded-xl skeleton"></div></div>
+                <div class="flex-1 space-y-2">
+                    <div class="w-12 h-8 rounded-2xl skeleton"></div>
+                    <div class="w-3/4 h-4 skeleton"></div>
+                    <div class="w-1/2 h-4 skeleton"></div>
+                </div>
+            `;
+            return div;
+        }
+
+        async function initialize() {
+            const { data: { session } } = await db.auth.getSession();
+            if (!session) {
+                window.location.href = 'auth.html';
+                return;
+            }
+            currentUser = session.user;
+            document.getElementById('profile-link-sidebar').href = `profile.html?user_id=${currentUser.id}`;
+            document.getElementById('profile-link-bottom').href = `profile.html?user_id=${currentUser.id}`;
+            await fetchNotifications();
+            subscribeToNotifications();
+            highlightActiveNav();
+        }
+
+        async function fetchNotifications() {
+            notificationsList.innerHTML = '';
+            for (let i = 0; i < 5; i++) {
+                notificationsList.appendChild(createSkeletonNotification());
+            }
+
+            const { data, error } = await db.from('notifications')
+                .select(`*, actor:actor_id(*), post:post_id(content, video_url)`)
+                .eq('recipient_id', currentUser.id)
+                .order('created_at', { ascending: false });
+
+            notificationsList.innerHTML = ''; // Clear skeletons
+            
+            if (error) {
+                console.error("Error fetching notifications:", error.message || error);
+                notificationsList.innerHTML = '<p class="p-4 text-center text-red-500">Gagal memuat notifikasi.</p>';
+                return;
+            }
+
+            const hasUnread = data.some(n => !n.is_read);
+            markAllReadBtn.disabled = !hasUnread;
+            
+            if (data.length === 0) {
+                notificationsList.innerHTML = '<p class="p-4 text-center text-gray-500 dark:text-slate-400">Tidak ada notifikasi baru.</p>';
+                markAllReadBtn.textContent = 'Semua sudah dibaca';
+                markAllReadBtn.disabled = true;
+                return;
+            }
+            
+            data.forEach((notification, index) => {
+                const el = renderNotification(notification);
+                el.style.animationDelay = `${index * 70}ms`;
+                notificationsList.appendChild(el);
+            });
+            
+            markNotificationsAsRead();
+        }
+        
+        function renderNotification(notification) {
+            const container = document.createElement('div');
+            const isReadClass = notification.is_read ? '' : 'bg-blue-500/10';
+            container.className = `p-4 border-b border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors notification-enter-animation ${isReadClass}`;
+            
+            const actor = notification.actor;
+            const post = notification.post;
+            if (!actor) return document.createElement('div');
+
+            const actorInitial = actor.full_name ? actor.full_name.charAt(0).toUpperCase() : '?';
+            const profilePicUrl = actor.profile_avatar_url || `https://placehold.co/40x40/1A1A1A/FFFFFF?text=${actorInitial}&font=inter`;
+
+            let iconHtml = '', textHtml = '', actionHtml = '', link = '#';
+            let postSnippet = '';
+
+            if (post) {
+                const content = post.content || (post.video_url ? 'Video' : 'Postingan');
+                const truncatedContent = content.substring(0, 50) + (content.length > 50 ? '...' : '');
+                if (post.video_url) postSnippet = `<div class="flex items-center text-sm text-gray-500 dark:text-slate-400 mt-1 pl-2 border-l-2 border-gray-200 dark:border-slate-600"><i class="bi bi-play-circle-fill mr-2"></i><span>${truncatedContent}</span></div>`;
+                else postSnippet = `<p class="text-sm text-gray-500 dark:text-slate-400 mt-1 pl-2 border-l-2 border-gray-200 dark:border-slate-600">"${truncatedContent}"</p>`;
+            }
+
+            switch (notification.notification_type) {
+                case 'follow':
+                    iconHtml = '<i class="bi bi-person-plus-fill text-blue-500 text-2xl"></i>';
+                    textHtml = `<strong>${actor.full_name}</strong> mulai mengikuti Anda.`;
+                    link = `profile.html?user_id=${actor.id}`;
+                    break;
+                case 'follow_request':
+                    iconHtml = '<i class="bi bi-person-check-fill text-green-500 text-2xl"></i>';
+                    textHtml = `<strong>${actor.full_name}</strong> ingin mengikuti Anda.`;
+                    link = `profile.html?user_id=${actor.id}`;
+                    actionHtml = `
+                        <div class="flex gap-2 mt-2">
+                            <button class="accept-request-btn bg-blue-500 text-white px-3 py-1 text-sm rounded-full font-semibold interactive-btn" data-actor-id="${actor.id}" data-notif-id="${notification.id}">Terima</button>
+                            <button class="decline-request-btn bg-gray-200 dark:bg-slate-600 px-3 py-1 text-sm rounded-full font-semibold interactive-btn" data-actor-id="${actor.id}" data-notif-id="${notification.id}">Tolak</button>
+                        </div>
+                    `;
+                    break;
+                case 'like_post':
+                    iconHtml = '<i class="bi bi-heart-fill text-red-500 text-2xl"></i>';
+                    textHtml = `<strong>${actor.full_name}</strong> menyukai postingan Anda.`;
+                    link = `index.html?post_id=${notification.post_id}`;
+                    break;
+                case 'comment':
+                    iconHtml = '<i class="bi bi-chat-left-text-fill text-gray-600 dark:text-slate-400 text-2xl"></i>';
+                    textHtml = `<strong>${actor.full_name}</strong> mengomentari postingan Anda.`;
+                    link = `index.html?post_id=${notification.post_id}`;
+                    break;
+                default:
+                    textHtml = `Notifikasi tidak dikenal.`;
+                    break;
+            }
+
+            container.innerHTML = `
+            <a href="${link}" class="flex items-start">
+                <div class="w-10 mr-4">${iconHtml}</div>
+                <div class="flex-1">
+                    <img src="${profilePicUrl}" alt="${actor.full_name}" class="w-8 h-8 rounded-xl mb-2">
+                    <p>${textHtml}</p>
+                    ${postSnippet}
+                    <p class="text-xs text-gray-400 dark:text-slate-500 mt-2">${new Date(notification.created_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}</p>
+                </div>
+                ${!notification.is_read ? '<div class="w-3 h-3 bg-blue-500 rounded-full self-center ml-2"></div>' : ''}
+            </a>
+            ${actionHtml}
+            `;
+            return container;
+        }
+
+        async function markNotificationsAsRead() {
+             const badges = [document.getElementById('notification-badge-sidebar'), document.getElementById('notification-badge-bottom')];
+            badges.forEach(badge => { if(badge) badge.classList.add('hidden'); });
+            await db.from('notifications').update({ is_read: true }).eq('recipient_id', currentUser.id).eq('is_read', false);
+        }
+        
+        markAllReadBtn.addEventListener('click', async () => {
+            markAllReadBtn.disabled = true;
+            markAllReadBtn.textContent = 'Menandai...';
+            await markNotificationsAsRead();
+            notificationsList.querySelectorAll('div.p-4').forEach(el => {
+                el.classList.remove('bg-blue-500/10');
+                const blueDot = el.querySelector('.bg-blue-500');
+                if(blueDot) blueDot.remove();
+            });
+            markAllReadBtn.textContent = 'Semua sudah dibaca';
+        });
+
+        notificationsList.addEventListener('click', async (e) => {
+            const acceptBtn = e.target.closest('.accept-request-btn');
+            if (acceptBtn) {
+                const actorId = acceptBtn.dataset.actorId;
+                const notifId = acceptBtn.dataset.notifId;
+                acceptBtn.textContent = 'Diterima';
+                acceptBtn.disabled = true;
+                acceptBtn.nextElementSibling.style.display = 'none';
+                
+                const { error: updateError } = await db.from('follows').update({ status: 'accepted' }).match({ follower_id: actorId, following_id: currentUser.id });
+                if (updateError) return console.error("Failed to update follow status:", updateError);
+
+                const { error: deleteError } = await db.from('notifications').delete().eq('id', notifId);
+                if (deleteError) return console.error("Failed to delete follow request notification:", deleteError);
+                
+                await db.from('notifications').insert({ recipient_id: actorId, actor_id: currentUser.id, notification_type: 'follow' });
+            }
+
+            const declineBtn = e.target.closest('.decline-request-btn');
+            if (declineBtn) {
+                const actorId = declineBtn.dataset.actorId;
+                const notifId = declineBtn.dataset.notifId;
+                declineBtn.textContent = 'Ditolak';
+                declineBtn.disabled = true;
+                declineBtn.previousElementSibling.style.display = 'none';
+                
+                await db.from('follows').delete().match({ follower_id: actorId, following_id: currentUser.id });
+                await db.from('notifications').delete().eq('id', notifId);
+            }
+        });
+
+        async function subscribeToNotifications() {
+            const updateBadge = async () => {
+                const { count } = await db.from('notifications').select('*', { count: 'exact', head: true }).eq('recipient_id', currentUser.id).eq('is_read', false);
+                const badges = [document.getElementById('notification-badge-sidebar'), document.getElementById('notification-badge-bottom')];
+                badges.forEach(badge => { if (badge) { if (count > 0) badge.classList.remove('hidden'); else badge.classList.add('hidden'); }});
+            };
+            db.channel('public:notifications').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `recipient_id=eq.${currentUser.id}` }, (payload) => { fetchNotifications(); updateBadge(); }).subscribe();
+            await updateBadge();
+        }
+        
+        document.getElementById('logout-button').addEventListener('click', async () => { 
+            if (db) {
+                await db.auth.signOut(); 
+            }
+            window.location.href = 'auth.html'; 
+        });
+        
+        async function initializeApp() {
+            try {
+                const response = await fetch('/api/config');
+                if (!response.ok) throw new Error('Network response was not ok');
+                const config = await response.json();
+                if (!config.supabaseUrl || !config.supabaseAnonKey) throw new Error('Supabase config is missing');
+
+                db = createClient(config.supabaseUrl, config.supabaseAnonKey);
+                
+                initialize();
+
+            } catch (error) {
+                console.error("Initialization Error:", error);
+                document.body.innerHTML = `<div class="text-center p-12"><h1 class="font-bold text-xl">Koneksi Gagal</h1><p class="text-gray-600 dark:text-slate-400">Tidak dapat terhubung ke server. Silakan coba lagi nanti.</p></div>`;
+            }
+        }
+
+        initializeApp();
+    </script>
+</body>
+</html>
+

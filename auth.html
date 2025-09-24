@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Selamat Datang di Marhayu</title>
+    <link rel="shortcut icon" href="assets/marhayu-white.png" type="image/x-icon">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .form-section { display: none; }
+        .form-section.active { display: block; }
+        .input-icon { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: #9ca3af; }
+        input[type="text"], input[type="email"], input[type="password"] { padding-left: 2.5rem; }
+    </style>
+</head>
+<body class="bg-white text-black dark:bg-slate-900 dark:text-slate-200 transition-colors duration-300">
+    <div class="min-h-screen grid grid-cols-1 md:grid-cols-2">
+        <div class="hidden md:flex flex-col items-center justify-center bg-black">
+            <img src="/assets/marhayu-white.png" alt="Logo Marhayu" class="h-24">
+        </div>
+        <div class="flex flex-col items-center justify-center p-4 md:p-8">
+            <div class="w-full max-w-md">
+                <div class="flex justify-center mb-8 md:hidden">
+                   <a href="about.html"><img src="/assets/marhayu-white.png" alt="Logo Marhayu" class="h-12"></a>
+               </div>
+                <h1 class="text-3xl font-bold text-left mb-6 dark:text-white">Terjadi Hari Ini</h1>
+                <div class="border border-black/10 dark:border-slate-700 rounded-2xl p-6 md:p-8 bg-white dark:bg-slate-800">
+                    <div class="flex border-b border-black/10 dark:border-slate-700 mb-6">
+                        <button id="show-login" class="flex-1 pb-2 font-semibold border-b-2 border-black dark:border-white dark:text-white">Masuk</button>
+                        <button id="show-signup" class="flex-1 pb-2 font-semibold border-b-2 border-transparent text-gray-500 dark:text-slate-400">Daftar</button>
+                    </div>
+                    <div id="message" class="text-red-500 text-sm mb-4 text-center min-h-[20px]"></div>
+                    <section id="login-section" class="form-section active">
+                        <h2 class="text-2xl font-bold mb-4 dark:text-white">Masuk ke Akun Anda</h2>
+                        <form id="login-form" class="space-y-4">
+                            <div>
+                                <label for="login-email" class="block text-sm font-medium mb-1 dark:text-slate-300">Email</label>
+                                <input type="email" id="login-email" required class="w-full px-4 py-2 border border-black/10 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-indigo-500 transition bg-transparent">
+                            </div>
+                            <div>
+                                <label for="login-password" class="block text-sm font-medium mb-1 dark:text-slate-300">Kata Sandi</label>
+                                <input type="password" id="login-password" required class="w-full px-4 py-2 border border-black/10 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-indigo-500 transition bg-transparent">
+                            </div>
+                            <div class="pt-4"><button type="submit" class="w-full bg-black text-white py-3 rounded-lg font-semibold hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200 transition-colors">Masuk</button></div>
+                        </form>
+                    </section>
+                    <section id="signup-section" class="form-section">
+                        <h2 class="text-2xl font-bold mb-4 dark:text-white">Buat Akun Baru</h2>
+                         <form id="signup-form" class="space-y-4">
+                            <div>
+                                <label for="signup-fullname" class="block text-sm font-medium mb-1 dark:text-slate-300">Nama Lengkap</label>
+                                <input type="text" id="signup-fullname" required class="w-full px-4 py-2 border border-black/10 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-indigo-500 transition bg-transparent">
+                            </div>
+                            <div class="relative">
+                                <label for="signup-username" class="block text-sm font-medium mb-1 dark:text-slate-300">Username</label>
+                                <span class="input-icon">@</span>
+                                <input type="text" id="signup-username" required class="w-full px-4 py-2 border border-black/10 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-indigo-500 transition bg-transparent" placeholder="username_unik">
+                            </div>
+                            <div>
+                                <label for="signup-email" class="block text-sm font-medium mb-1 dark:text-slate-300">Email</label>
+                                <input type="email" id="signup-email" required class="w-full px-4 py-2 border border-black/10 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-indigo-500 transition bg-transparent">
+                            </div>
+                            <div>
+                                <label for="signup-password" class="block text-sm font-medium mb-1 dark:text-slate-300">Kata Sandi</label>
+                                <input type="password" id="signup-password" required class="w-full px-4 py-2 border border-black/10 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-indigo-500 transition bg-transparent">
+                            </div>
+                            <div class="flex items-start space-x-3 pt-2">
+                                <input id="terms-checkbox" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mt-1 flex-shrink-0">
+                                <label for="terms-checkbox" class="text-xs text-gray-500 dark:text-slate-400">
+                                    Saya telah membaca dan menyetujui
+                                    <a href="terms.html" target="_blank" class="font-semibold text-indigo-600 hover:underline dark:text-indigo-400">Syarat & Ketentuan</a> dan
+                                    <a href="privacy.html" target="_blank" class="font-semibold text-indigo-600 hover:underline dark:text-indigo-400">Kebijakan Privasi</a> Marhayu.
+                                </label>
+                            </div>
+                            <div class="pt-2"><button type="submit" id="signup-button" class="w-full bg-black text-white py-3 rounded-lg font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed dark:bg-white dark:text-black dark:hover:bg-gray-200" disabled>Daftar</button></div>
+                        </form>
+                    </section>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createClient } = supabase;
+
+        const showLoginBtn = document.getElementById('show-login');
+        const showSignupBtn = document.getElementById('show-signup');
+        const loginSection = document.getElementById('login-section');
+        const signupSection = document.getElementById('signup-section');
+        const loginForm = document.getElementById('login-form');
+        const signupForm = document.getElementById('signup-form');
+        const messageDiv = document.getElementById('message');
+        const termsCheckbox = document.getElementById('terms-checkbox');
+        const signupButton = document.getElementById('signup-button');
+
+        function switchTab(tab) {
+             messageDiv.textContent = '';
+            if (tab === 'login') {
+                loginSection.classList.add('active');
+                signupSection.classList.remove('active');
+                showLoginBtn.classList.remove('text-gray-500', 'border-transparent', 'dark:text-slate-400');
+                showLoginBtn.classList.add('border-black', 'dark:border-white', 'dark:text-white');
+                showSignupBtn.classList.add('text-gray-500', 'border-transparent', 'dark:text-slate-400');
+                showSignupBtn.classList.remove('border-black', 'dark:border-white', 'dark:text-white');
+            } else {
+                loginSection.classList.remove('active');
+                signupSection.classList.add('active');
+                showSignupBtn.classList.remove('text-gray-500', 'border-transparent', 'dark:text-slate-400');
+                showSignupBtn.classList.add('border-black', 'dark:border-white', 'dark:text-white');
+                showLoginBtn.classList.add('text-gray-500', 'border-transparent', 'dark:text-slate-400');
+                showLoginBtn.classList.remove('border-black', 'dark:border-white', 'dark:text-white');
+            }
+        }
+        showLoginBtn.addEventListener('click', () => switchTab('login'));
+        showSignupBtn.addEventListener('click', () => switchTab('signup'));
+
+        function showMessage(msg, isError = true) {
+            messageDiv.textContent = msg;
+            messageDiv.className = isError ? 'text-red-500 text-sm mb-4 text-center min-h-[20px]' : 'text-green-500 text-sm mb-4 text-center min-h-[20px]';
+        }
+
+        if (termsCheckbox) {
+            termsCheckbox.addEventListener('change', () => {
+                signupButton.disabled = !termsCheckbox.checked;
+            });
+        }
+
+        (async () => {
+            try {
+                const response = await fetch('/api/config');
+                if (!response.ok) throw new Error('Network response was not ok');
+                
+                const config = await response.json();
+                if (config.error) throw new Error(config.error);
+
+                const db = createClient(config.supabaseUrl, config.supabaseAnonKey);
+
+                const { data: { session } } = await db.auth.getSession();
+                if (session) {
+                    window.location.href = 'index.html';
+                    return;
+                }
+
+                signupForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    if (!termsCheckbox.checked) {
+                        showMessage('Anda harus menyetujui Syarat & Ketentuan untuk mendaftar.');
+                        return;
+                    }
+                    
+                    const fullName = document.getElementById('signup-fullname').value;
+                    const username = document.getElementById('signup-username').value;
+                    const email = document.getElementById('signup-email').value;
+                    const password = document.getElementById('signup-password').value;
+
+                    if (!email || !password || !fullName || !username) return showMessage('Semua kolom harus diisi.');
+                    
+                    const { data, error } = await db.auth.signUp({
+                        email: email, password: password,
+                        options: { data: { full_name: fullName, username: username.toLowerCase() } }
+                    });
+                    if (error) return showMessage('Gagal mendaftar: ' + error.message);
+                    if (data.user) {
+                        showMessage('Pendaftaran berhasil! Mengalihkan...', false);
+                        setTimeout(() => window.location.href = 'index.html', 1500);
+                    }
+                });
+
+                loginForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const email = document.getElementById('login-email').value;
+                    const password = document.getElementById('login-password').value;
+                    if (!email || !password) return showMessage('Email dan kata sandi harus diisi.');
+                    const { error } = await db.auth.signInWithPassword({ email, password });
+                    if (error) showMessage('Gagal masuk: ' + error.message);
+                    else window.location.href = 'index.html';
+                });
+
+            } catch (error) {
+                console.error('Initialization Error:', error);
+                showMessage('Tidak dapat terhubung ke server. Silakan coba lagi nanti.');
+            }
+        })();
+
+        // --- THEME SWITCHER LOGIC for Auth Page ---
+        // Simple theme detection for consistency, no button needed here
+        const savedAuthTheme = localStorage.getItem('theme');
+        if (savedAuthTheme === 'dark' || (!savedAuthTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+</body>
+</html>
+

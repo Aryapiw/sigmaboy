@@ -1,0 +1,2039 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beranda - Marhayu</title>
+    <link rel="shortcut icon" href="assets/marhayu-white.png" type="image/x-icon">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:wght@400;700&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script>
+        // Inisialisasi Tailwind dark mode
+        tailwind.config = {
+          darkMode: 'class',
+        }
+      </script>
+    <style>
+        html, body { 
+            height: 100%;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        .font-lora { font-family: 'Lora', serif; }
+        .font-playfair { font-family: 'Playfair Display', serif; }
+        .modal-content::-webkit-scrollbar, .sidebar-nav::-webkit-scrollbar, #poll-options-container::-webkit-scrollbar { display: none; }
+        .modal-content, .sidebar-nav, #poll-options-container { -ms-overflow-style: none; scrollbar-width: none; }
+        .icon-btn { transition: color 0.2s ease-in-out; }
+        .preview-container { position: relative; }
+        .remove-media-btn { position: absolute; top: 0.5rem; right: 0.5rem; background-color: rgba(0,0,0,0.6); border-radius: 9999px; width: 2rem; height: 2rem; color: white; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.5rem; line-height: 2rem; }
+        
+        /* FIX: Mengatasi bug latar belakang komentar disematkan di dark mode */
+        .comment-pinned .bg-gray-100 { background-color: #f0f9ff !important; }
+        .dark .comment-pinned .dark\:bg-slate-700 { background-color: rgba(71, 85, 105, 0.3) !important; }
+        
+        .mention-popup { position: absolute; z-index: 100; background-color: white; border: 1px solid #e5e7eb; border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); max-height: 200px; overflow-y: auto; }
+        .mention-item { display: flex; align-items: center; padding: 0.5rem; cursor: pointer; }
+        .mention-item:hover { background-color: #f3f4f6; }
+        .notification-badge { position: absolute; top: 0.5rem; right: 0.5rem; width: 0.75rem; height: 0.75rem; border-radius: 9999px; background-color: #ef4444; border: 2px solid white; }
+        .dark .notification-badge { border-color: #0f172a; }
+        .custom-video-player { position: relative; background-color: #000; border-radius: 1rem; overflow: hidden; line-height: 0; }
+        .custom-video-player video { display: block; margin: 0 auto; width: auto; height: auto; max-width: 100%; max-height: 560px; border-radius: 1rem; }
+        .video-controls-overlay { position: absolute; inset: 0; background-color: rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s ease; cursor: pointer; }
+        .custom-video-player:hover .video-controls-overlay { opacity: 1; }
+        .video-controls-overlay .play-pause-btn { background: rgba(0,0,0,0.5); border: 2px solid white; color: white; width: 4rem; height: 4rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; }
+        .volume-btn { position: absolute; bottom: 0.75rem; right: 0.75rem; background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; text-shadow: 0 0 5px black; z-index: 10; }
+        .video-progress-bar { position: absolute; bottom: 0; left: 0; width: 100%; height: 5px; background-color: rgba(255,255,255,0.3); cursor: pointer; }
+        .video-progress-filled { width: 0%; height: 100%; background-color: #fff; }
+        
+        #global-reaction-popover {
+            position: fixed;
+            background-color: white;
+            border-radius: 9999px;
+            padding: 0.25rem 0.5rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: flex;
+            gap: 0.5rem;
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transform: scale(0.9) translateY(10px);
+            transition: opacity 0.15s ease-out, transform 0.15s ease-out, visibility 0s linear 0.2s;
+        }
+        #global-reaction-popover.visible {
+            opacity: 1;
+            visibility: visible;
+            transform: scale(1) translateY(0);
+            transition-delay: 0s;
+        }
+        .reaction-emoji { font-size: 1.5rem; cursor: pointer; transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .reaction-emoji:hover { transform: scale(1.4); }
+        .reaction-summary { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
+        .reaction-pill { display: flex; align-items: center; gap: 0.25rem; background-color: #eef2ff; padding: 0.125rem 0.5rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; }
+        .user-reacted { background-color: #c7d2fe; border: 1px solid #818cf8; }
+
+        #comment-modal, #confirm-modal, #promote-modal { transition: opacity 0.25s ease, visibility 0.25s ease; opacity: 0; visibility: hidden; }
+        #comment-modal.is-visible, #confirm-modal.is-visible, #promote-modal.is-visible { opacity: 1; visibility: visible; }
+        #comment-modal .modal-box, #confirm-modal .modal-box, #promote-modal .modal-box { transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform: scale(0.95) translateY(15px); }
+        #comment-modal.is-visible .modal-box, #confirm-modal.is-visible .modal-box, #promote-modal.is-visible .modal-box { transform: scale(1) translateY(0); }
+
+        .skeleton { background-color: #e5e7eb; border-radius: 0.5rem; animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 50% { opacity: .5; } }
+        .dark .skeleton { background-color: #334155; }
+
+        .interactive-btn { transition: transform 0.1s ease-out, background-color 0.2s ease; }
+        .interactive-btn:active { transform: scale(0.95); }
+        .post-enter-animation { animation: fadeInSlideUp 0.5s ease-out forwards; opacity: 0; }
+        @keyframes fadeInSlideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- New Poll Styles inspired by explore-nusafeed --- */
+        .poll-option-display {
+            position: relative;
+            border: 1px solid #d1d5db; /* gray-300 */
+            border-radius: 0.5rem;
+            cursor: pointer;
+            overflow: hidden;
+            transition: border-color 0.2s;
+        }
+        .dark .poll-option-display {
+            border-color: #475569; /* slate-600 */
+        }
+        .poll-option-display:hover {
+             border-color: #6366f1; /* indigo-500 */
+        }
+        .poll-option-display.voted-by-user {
+            border-color: #4f46e5; /* indigo-600 */
+        }
+        .poll-option-bar {
+            position: absolute;
+            top: 0; left: 0; height: 100%;
+            background-color: #c7d2fe; /* indigo-200 */
+            width: 0%;
+            z-index: 0;
+            transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .dark .poll-option-bar {
+             background-color: rgba(99, 102, 241, 0.3); /* indigo-500 with opacity */
+        }
+        .poll-option-text-container {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            transition: background-color 0.2s;
+        }
+        .poll-option-display.voted-by-user .poll-option-text-container {
+            background-color: #e0e7ff; /* indigo-100 */
+            font-weight: 500;
+        }
+        .dark .poll-option-display.voted-by-user .poll-option-text-container {
+            background-color: rgba(99, 102, 241, 0.2); /* indigo-500 with opacity */
+        }
+        .poll-option-display:not(.voted-by-user):hover .poll-option-text-container {
+            background-color: #f1f5f9; /* slate-100 */
+        }
+        .dark .poll-option-display:not(.voted-by-user):hover .poll-option-text-container {
+             background-color: #1e293b; /* slate-800 */
+        }
+        .poll-option-percent {
+            font-weight: 600;
+        }
+        /* --- End of New Poll Styles --- */
+        
+        .copied-post-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.125rem 0.5rem;
+            background-color: #f3f4f6;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            color: #4b5563;
+            margin-top: 0.5rem;
+        }
+        
+        #toast-notification {
+            position: fixed;
+            bottom: 5rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background-color: rgba(17, 24, 39, 0.8);
+            backdrop-filter: blur(4px);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 9999px;
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transition: transform 0.3s ease, opacity 0.3s ease, visibility 0s linear 0.3s;
+        }
+        #toast-notification.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+            visibility: visible;
+            transition-delay: 0s;
+        }
+
+        #tab-container {
+            position: relative;
+        }
+        .tab-btn {
+            position: relative;
+            z-index: 10;
+        }
+        #tab-indicator {
+            position: absolute;
+            bottom: 0;
+            height: 2px;
+            transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Bug Hunter Sheet Styles */
+        #bug-hunter-sheet.is-visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        #bug-hunter-sheet.is-visible #bug-hunter-sheet-content {
+            transform: translateY(0);
+        }
+
+        /* Custom scrollbar for dark mode */
+        main::-webkit-scrollbar {
+            width: 12px;
+        }
+        .dark main::-webkit-scrollbar-track {
+            background: #0f172a; /* slate-900 */
+        }
+        .dark main::-webkit-scrollbar-thumb {
+            background-color: #334155; /* slate-700 */
+            border-radius: 6px;
+            border: 3px solid #0f172a; /* slate-900 */
+        }
+        
+        /* Added for loading more indicator */
+        #loading-indicator {
+            display: none;
+            padding: 1.5rem;
+            text-align: center;
+        }
+        #loading-indicator.visible {
+            display: block;
+        }
+
+        /* Character counter styles */
+        #char-counter {
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+        .dark #char-counter {
+            color: #94a3b8;
+        }
+        #char-counter.limit-exceeded {
+            color: #ef4444;
+            font-weight: 500;
+        }
+
+        /* New Label Styles */
+        .founder-label, .security-label, .one-label {
+            display: inline-block;
+            padding: 0.1rem 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            border-radius: 9999px;
+            margin-left: 0.5rem;
+            animation: pulse-glow 2s infinite;
+            text-transform: uppercase;
+        }
+        .founder-label {
+            background-color: #fcd34d; /* Yellow-400 */
+            color: #92400e; /* Yellow-900 */
+            box-shadow: 0 0 5px #fcd34d;
+        }
+        .security-label {
+            background-color: #ef4444; /* Red-500 */
+            color: white;
+            box-shadow: 0 0 5px #ef4444;
+        }
+        .one-label {
+            background-color: #8b5cf6; /* Violet-500 */
+            color: white;
+            box-shadow: 0 0 5px #8b5cf6;
+        }
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.9; transform: scale(1); }
+        }
+    </style>
+</head>
+<body class="bg-white text-black dark:bg-slate-900 dark:text-slate-200 transition-colors duration-300">
+
+    <div class="container mx-auto max-w-4xl flex flex-row md:gap-8 h-full">
+        <aside class="hidden md:block w-[280px] flex-shrink-0 pt-8 pr-4">
+            <a href="index.html"><img src="/assets/marhayu-white.png" alt="Logo Marhayu" class="h-10 mb-8"></a>
+            <nav class="space-y-1 text-lg sidebar-nav">
+                <a href="index.html" class="flex items-center space-x-3 p-3 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors font-bold text-black dark:text-white"><i class="bi bi-house-door-fill text-2xl"></i><span>Beranda</span></a>
+                <a href="search.html" class="flex items-center space-x-3 p-3 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"><i class="bi bi-search text-2xl"></i><span>Pencarian</span></a>
+                 <a href="notifications.html" class="relative flex items-center space-x-3 p-3 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors">
+                    <i class="bi bi-bell text-2xl"></i><span>Notifikasi</span>
+                    <span id="notification-badge-sidebar" class="hidden notification-badge"></span>
+                </a>
+                <a href="#" id="profile-link-sidebar" class="flex items-center space-x-3 p-3 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"><i class="bi bi-person text-2xl"></i><span>Profil</span></a>
+            </nav>
+            <button id="logout-button" class="mt-8 w-full bg-black text-white py-2 rounded-full font-semibold hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200 transition-colors interactive-btn">Keluar</button>
+        </aside>
+
+        <main class="w-full min-w-0 md:border-l md:border-r border-gray-200 dark:border-slate-700 h-full overflow-y-auto">
+            <header class="sticky top-0 z-10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border-b border-gray-200 dark:border-slate-700">
+                <div class="flex items-center justify-center p-3 md:hidden">
+                    <img src="/assets/marhayu-white.png" alt="Logo Marhayu" class="h-8">
+                </div>
+                <div id="header-content" class="hidden md:block">
+                     <div id="tab-container" class="flex relative">
+                        <button id="for-you-tab" class="tab-btn flex-1 text-center py-3 font-semibold text-black dark:text-white transition-colors">For You</button>
+                        <button id="following-tab" class="tab-btn flex-1 text-center py-3 font-semibold text-gray-500 dark:text-slate-400 transition-colors">Following</button>
+                        <div id="tab-indicator" class="bg-black dark:bg-white"></div>
+                    </div>
+                    <h1 id="hashtag-header-title" class="text-xl font-bold px-4 py-3 hidden"></h1>
+                </div>
+            </header>
+
+            <div class="p-4 border-b border-gray-200 dark:border-slate-700 relative">
+                <textarea id="post-content" class="w-full p-2 text-lg border-none focus:ring-0 resize-none transition-all duration-300 bg-transparent dark:text-slate-100 dark:placeholder-slate-500" rows="3" placeholder="Apa yang sedang terjadi?" maxlength="300"></textarea>
+                <div id="post-mention-popup" class="mention-popup hidden dark:bg-slate-800 dark:border-slate-600"></div>
+                <div id="media-preview-container" class="mt-2"></div>
+                
+                <!-- New Poll Creator UI -->
+                <div id="poll-creator-container" class="mt-4 space-y-3 hidden">
+                    <input type="text" id="poll-question-input" class="w-full p-2 text-md border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-1 focus:ring-black dark:bg-slate-700 dark:placeholder-slate-500" placeholder="Pertanyaan Polling...">
+                    <div id="poll-options-creator" class="space-y-2">
+                        <!-- Poll option inputs will be added here by JS -->
+                    </div>
+                    <div class="flex justify-between items-center text-sm">
+                         <button type="button" id="add-poll-option-button" class="text-blue-600 dark:text-blue-400 hover:underline font-semibold">+ Tambah Opsi</button>
+                         <button type="button" id="remove-poll-creator-button" class="text-red-500 dark:text-red-400 hover:underline font-semibold">Hapus Polling</button>
+                    </div>
+                    <hr class="dark:border-slate-700 mt-2">
+                </div>
+                
+                <div class="flex items-center justify-between mt-2">
+                     <div class="flex items-center space-x-4 text-xl text-gray-500 dark:text-slate-400">
+                        <label for="image-upload" class="cursor-pointer hover:text-blue-500"><i class="bi bi-image"></i></label>
+                        <input type="file" id="image-upload" class="hidden" accept="image/*">
+                        <label for="video-upload" class="cursor-pointer hover:text-green-500"><i class="bi bi-camera-video"></i></label>
+                        <input type="file" id="video-upload" class="hidden" accept="video/*">
+                        <button id="poll-button" class="cursor-pointer hover:text-orange-500"><i class="bi bi-bar-chart-line"></i></button>
+                        <button id="full-text-style-button" class="cursor-pointer hover:text-purple-500"><i class="bi bi-fonts"></i></button>
+                        <button id="promote-button" class="cursor-pointer hover:text-yellow-500 hidden"><i class="bi bi-megaphone-fill"></i></button>
+                    </div>
+                     <div class="flex items-center">
+                        <span id="char-counter" class="mr-4">300</span>
+                        <button id="theme-toggle" type="button" class="text-slate-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 focus:outline-none focus:ring-4 focus:ring-gray-200 dark:focus:ring-slate-700 rounded-full text-sm p-2.5 mr-4">
+                            <svg id="theme-toggle-dark-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+                            <svg id="theme-toggle-light-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.707.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm-.707 10.607a1 1 0 011.414 0l.707-.707a1 1 0 111.414 1.414l-.707.707a1 1 0 01-1.414 0zM3 11a1 1 0 100 2h1a1 1 0 100-2H3z" fill-rule="evenodd" clip-rule="evenodd"></path></svg>
+                        </button>
+                        <button id="submit-post" class="bg-black text-white px-6 py-2 rounded-full font-semibold hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200 transition-colors disabled:opacity-50 interactive-btn" disabled>Posting</button>
+                     </div>
+                </div>
+            </div>
+
+            <div id="timeline">
+                <p class="p-4 text-center text-gray-500 dark:text-slate-400">Memuat postingan...</p>
+            </div>
+            <div id="loading-indicator">
+                <div class="w-8 h-8 border-4 border-t-transparent border-gray-300 dark:border-slate-600 rounded-full animate-spin mx-auto"></div>
+            </div>
+        </main>
+    </div>
+    
+    <nav id="bottom-nav" class="md:hidden fixed bottom-0 w-full bg-white border-t border-black/10 dark:bg-slate-900 dark:border-slate-700/50 z-20">
+        <div class="flex justify-around items-center h-16">
+            <a href="index.html" class="flex flex-col items-center justify-center text-gray-500 dark:text-slate-400 hover:text-black dark:hover:text-white">
+                <i class="bi bi-house-door text-2xl"></i>
+            </a>
+            <a href="search.html" class="flex flex-col items-center justify-center text-gray-500 dark:text-slate-400 hover:text-black dark:hover:text-white">
+                <i class="bi bi-search text-2xl"></i>
+            </a>
+            <a href="notifications.html" class="relative flex flex-col items-center justify-center text-gray-500 dark:text-slate-400 hover:text-black dark:hover:text-white">
+                <i class="bi bi-bell text-2xl"></i>
+                <span id="notification-badge-bottom" class="hidden notification-badge"></span>
+            </a>
+            <a href="#" id="profile-link-bottom" class="flex flex-col items-center justify-center text-gray-500 dark:text-slate-400 hover:text-black dark:hover:text-white">
+                <i class="bi bi-person text-2xl"></i>
+            </a>
+        </nav>
+
+    <div id="comment-modal" class="fixed inset-0 bg-black bg-opacity-30 dark:bg-black/70 items-center justify-center hidden z-50">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-lg mx-4 border border-black/20 dark:border-slate-700 overflow-hidden flex flex-col max-h-[90vh] modal-box">
+            <div class="flex justify-between items-center p-4 border-b border-black/10 dark:border-slate-700">
+                <h2 class="font-bold text-lg">Postingan</h2>
+                <button id="close-modal-button" class="text-2xl hover:text-gray-500 transition-colors">&times;</button>
+            </div>
+            <div id="modal-content" class="p-4 overflow-y-auto modal-content"></div>
+             <div class="p-4 border-t border-black/10 dark:border-slate-700 mt-auto relative">
+                 <div id="replying-to-banner" class="hidden text-sm text-gray-500 dark:text-slate-400 mb-2"></div>
+                <div class="flex space-x-2">
+                    <input type="text" id="comment-input" placeholder="Tulis komentar..." class="w-full px-4 py-2 border border-black/20 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100 dark:focus:ring-slate-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-black">
+                    <button id="submit-comment" class="bg-black text-white dark:bg-white dark:text-black px-4 py-2 rounded-lg font-semibold hover:bg-gray-800 dark:hover:bg-gray-200 interactive-btn">Kirim</button>
+                </div>
+                 <div id="comment-mention-popup" class="mention-popup hidden dark:bg-slate-800 dark:border-slate-600"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="full-text-modal" class="fixed inset-0 bg-black bg-opacity-30 dark:bg-black/70 items-center justify-center hidden z-50">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-sm mx-4 border border-black/20 dark:border-slate-700 overflow-hidden">
+            <div class="flex justify-between items-center p-4 border-b border-black/10 dark:border-slate-700">
+                <h2 class="font-bold text-lg">Gaya Teks Penuh</h2>
+                <button id="close-full-text-modal" class="text-2xl hover:text-gray-500 transition-colors">&times;</button>
+            </div>
+            <div class="p-4 space-y-4">
+                <div>
+                    <h3 class="font-semibold mb-2">Warna Latar</h3>
+                    <div class="grid grid-cols-5 gap-2" id="color-swatches">
+                        <button class="w-10 h-10 rounded-full bg-gradient-to-br from-red-500 to-orange-500" data-color="bg-gradient-to-br from-red-500 to-orange-500"></button>
+                        <button class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-teal-500" data-color="bg-gradient-to-br from-blue-500 to-teal-500"></button>
+                        <button class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-indigo-600" data-color="bg-gradient-to-br from-purple-600 to-indigo-600"></button>
+                        <button class="w-10 h-10 rounded-full bg-gradient-to-br from-pink-500 to-rose-500" data-color="bg-gradient-to-br from-pink-500 to-rose-500"></button>
+                        <button class="w-10 h-10 rounded-full bg-gray-800" data-color="bg-gray-800"></button>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="font-semibold mb-2">Gaya Huruf</h3>
+                    <div class="grid grid-cols-3 gap-2" id="font-swatches">
+                        <button class="p-2 border rounded-lg font-inter dark:border-slate-600" data-font="font-inter">Netral</button>
+                        <button class="p-2 border rounded-lg font-lora dark:border-slate-600" data-font="font-lora">Elegan</button>
+                        <button class="p-2 border rounded-lg font-playfair dark:border-slate-600" data-font="font-playfair">Klasik</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="confirm-modal" class="fixed inset-0 bg-black bg-opacity-40 dark:bg-black/70 items-center justify-center hidden z-[60]">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-sm mx-4 border border-black/10 dark:border-slate-700 overflow-hidden modal-box text-center p-6">
+            <div class="text-5xl text-red-500 mb-4"><i class="bi bi-exclamation-triangle"></i></div>
+            <h2 id="confirm-modal-title" class="font-bold text-lg mb-2">Konfirmasi Aksi</h2>
+            <p id="confirm-modal-message" class="text-gray-600 dark:text-slate-300 mb-6">Apakah Anda yakin ingin melanjutkan?</p>
+            <div class="flex justify-center gap-4">
+                <button id="confirm-modal-cancel" class="w-full px-4 py-2 bg-gray-200 text-gray-800 dark:bg-slate-600 dark:text-slate-200 rounded-lg font-semibold hover:bg-gray-300 dark:hover:bg-slate-500 interactive-btn">Batal</button>
+                <button id="confirm-modal-confirm" class="w-full px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 interactive-btn">Hapus</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Promote Modal -->
+    <div id="promote-modal" class="fixed inset-0 bg-black bg-opacity-30 dark:bg-black/70 items-center justify-center hidden z-50">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-lg mx-4 border border-black/20 dark:border-slate-700 overflow-hidden flex flex-col max-h-[90vh] modal-box">
+            <div class="flex justify-between items-center p-4 border-b border-black/10 dark:border-slate-700">
+                <h2 class="font-bold text-lg">Buat Postingan Promosi</h2>
+                <button type="button" id="close-promote-modal" class="text-2xl hover:text-gray-500 transition-colors">&times;</button>
+            </div>
+            <div class="p-4 space-y-4 overflow-y-auto">
+                <textarea id="promote-content" class="w-full p-2 text-lg border rounded-md focus:ring-1 focus:ring-black resize-none dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:focus:ring-white" rows="3" placeholder="Tulis konten iklan..."></textarea>
+                <div id="promote-media-preview" class="mt-2"></div>
+                <div class="flex items-center space-x-4 text-xl text-gray-500 dark:text-slate-400">
+                    <label for="promote-image-upload" class="cursor-pointer hover:text-blue-500"><i class="bi bi-image"></i></label>
+                    <input type="file" id="promote-image-upload" class="hidden" accept="image/*">
+                    <label for="promote-video-upload" class="cursor-pointer hover:text-green-500"><i class="bi bi-camera-video"></i></label>
+                    <input type="file" id="promote-video-upload" class="hidden" accept="video/*">
+                </div>
+                <hr class="dark:border-slate-600">
+                <div>
+                    <label for="promote-link" class="block text-sm font-medium text-gray-700 dark:text-slate-300">URL Link Tombol (Opsional)</label>
+                    <input type="url" id="promote-link" class="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white" placeholder="https://contoh.com">
+                </div>
+                <div>
+                    <label for="promote-button-text" class="block text-sm font-medium text-gray-700 dark:text-slate-300">Teks Tombol</label>
+                    <input type="text" id="promote-button-text" class="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white" placeholder="Pelajari Lebih Lanjut">
+                </div>
+            </div>
+            <div class="p-4 border-t border-black/10 dark:border-slate-700 mt-auto text-right">
+                <button id="submit-promote-post" class="bg-blue-600 text-white px-6 py-2 rounded-full font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 interactive-btn">Promosikan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bug Hunter Bottom Sheet -->
+    <div id="bug-hunter-sheet" class="fixed inset-0 bg-black bg-opacity-30 dark:bg-black/70 z-50 flex items-end transition-opacity duration-300 opacity-0 pointer-events-none">
+        <div id="bug-hunter-sheet-content" class="w-full bg-white dark:bg-slate-800 rounded-t-2xl p-4 transform translate-y-full transition-transform duration-300 ease-in-out">
+            <div class="w-12 h-1.5 bg-gray-300 dark:bg-slate-600 rounded-full mx-auto mb-4"></div>
+            <div class="flex justify-between items-center mb-2">
+                <h2 class="font-bold text-lg flex items-center gap-2"><i class="bi bi-bug-fill text-yellow-500"></i>Bug Hunter Program</h2>
+                <button id="close-bug-sheet-button" class="text-2xl hover:text-gray-500 transition-colors">&times;</button>
+            </div>
+            <p class="text-sm text-gray-600 dark:text-slate-300">
+                Jika menemukan bug, silahkan DM via Instagram/TikTok: <a href="https://www.instagram.com/mhmdszuli" target="_blank" class="text-blue-500 hover:underline font-semibold">@mhmdszuli</a>.
+                Terimakasih telah berkontribusi dalam pengembangan Marhayu!
+            </p>
+        </div>
+    </div>
+
+    <div id="toast-notification">Tautan telah disalin!</div>
+    
+    <div id="global-reaction-popover" class="dark:bg-slate-800">
+        <!-- Emoji content will be populated by JS -->
+    </div>
+
+    <script>
+        // --- THEME SWITCHER LOGIC ---
+        const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
+        const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
+        const themeToggleBtn = document.getElementById('theme-toggle');
+
+        function applyTheme(theme) {
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark');
+                themeToggleLightIcon.classList.remove('hidden');
+                themeToggleDarkIcon.classList.add('hidden');
+                localStorage.setItem('theme', 'dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+                themeToggleLightIcon.classList.add('hidden');
+                themeToggleDarkIcon.classList.remove('hidden');
+                localStorage.setItem('theme', 'light');
+            }
+        }
+
+        const savedTheme = localStorage.getItem('theme');
+        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+        if (savedTheme === 'dark' || (!savedTheme && systemPrefersDark)) {
+            applyTheme('dark');
+        } else {
+            applyTheme('light');
+        }
+
+        themeToggleBtn.addEventListener('click', () => {
+            const isDark = document.documentElement.classList.contains('dark');
+            applyTheme(isDark ? 'light' : 'dark');
+        });
+        // --- END THEME SWITCHER LOGIC ---
+
+        const { createClient } = supabase;
+        let db; 
+        let activeTab = 'for-you';
+
+        let currentUser = null, currentUserProfile = null, postImageFile = null, postVideoFile = null, activePostForComment = null, isFullTextMode = false, fullTextColor = '', fullTextFont = '', activeReplyTo = null, isPollMode = false;
+        let promoteImageFile = null, promoteVideoFile = null;
+        let commentsById = new Map();
+        let confirmCallbackHolder = () => {};
+        let followingIds = [];
+        let recentlyUpdatedPostLikes = new Set();
+        let recentlyUpdatedCommentLikes = new Set();
+        let reactionPopoverTimeout;
+
+        // --- Infinite Scroll State ---
+        let currentPage = 0;
+        let isLoading = false;
+        let allPostsLoaded = false;
+        const POSTS_PER_PAGE = 5;
+        
+        const timeline = document.getElementById('timeline');
+        const postContentInput = document.getElementById('post-content');
+        const submitPostButton = document.getElementById('submit-post');
+        const imageUploadInput = document.getElementById('image-upload');
+        const videoUploadInput = document.getElementById('video-upload');
+        const mediaPreviewContainer = document.getElementById('media-preview-container');
+        const commentModal = document.getElementById('comment-modal'), closeModalButton = document.getElementById('close-modal-button'), modalContent = document.getElementById('modal-content'), commentInput = document.getElementById('comment-input'), submitCommentButton = document.getElementById('submit-comment'), replyingToBanner = document.getElementById('replying-to-banner');
+        const fullTextStyleButton = document.getElementById('full-text-style-button'), fullTextModal = document.getElementById('full-text-modal'), closeFullTextModalButton = document.getElementById('close-full-text-modal'), colorSwatches = document.getElementById('color-swatches'), fontSwatches = document.getElementById('font-swatches');
+        
+        // Poll elements
+        const pollButton = document.getElementById('poll-button');
+        const pollCreatorContainer = document.getElementById('poll-creator-container');
+        const pollQuestionInput = document.getElementById('poll-question-input');
+        const pollOptionsCreator = document.getElementById('poll-options-creator');
+        const addPollOptionButton = document.getElementById('add-poll-option-button');
+        const removePollCreatorButton = document.getElementById('remove-poll-creator-button');
+        
+        const globalReactionPopover = document.getElementById('global-reaction-popover');
+        const forYouTab = document.getElementById('for-you-tab');
+        const followingTab = document.getElementById('following-tab');
+        
+        // Promote Modal Elements
+        const promoteButton = document.getElementById('promote-button');
+        const promoteModal = document.getElementById('promote-modal');
+        const closePromoteModalButton = document.getElementById('close-promote-modal');
+        const submitPromotePostButton = document.getElementById('submit-promote-post');
+        const promoteContentInput = document.getElementById('promote-content');
+        const promoteImageUpload = document.getElementById('promote-image-upload');
+        const promoteVideoUpload = document.getElementById('promote-video-upload');
+        const promoteMediaPreview = document.getElementById('promote-media-preview');
+        const promoteLinkInput = document.getElementById('promote-link');
+        const promoteButtonTextInput = document.getElementById('promote-button-text');
+        
+        // Bug Hunter Sheet Elements
+        const bugHunterSheet = document.getElementById('bug-hunter-sheet');
+        const closeBugSheetButton = document.getElementById('close-bug-sheet-button');
+
+        // Infinite Scroll Elements
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const mainScrollContainer = document.querySelector('main');
+
+        // Character Counter
+        const charCounter = document.getElementById('char-counter');
+
+        const availableReactions = ['👍', '❤️', '😂', '😮', '😢'];
+        globalReactionPopover.innerHTML = availableReactions
+            .map(emoji => `<span class="reaction-emoji" data-reaction="${emoji}">${emoji}</span>`)
+            .join('');
+
+        /**
+         * FUNGSI BARU: Mengubah karakter HTML menjadi entitas yang aman untuk ditampilkan.
+         * Ini mencegah browser merender kode HTML yang diposting oleh pengguna.
+         * @param {string} str - String yang akan di-escape.
+         * @returns {string} String yang sudah aman.
+         */
+        function escapeHTML(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+        
+        function getAvatarFallback(name) {
+            const initial = name ? name.trim().charAt(0).toUpperCase() : '?';
+            return `https://placehold.co/48x48/1A1A1A/FFFFFF?text=${initial}&font=inter`;
+        }
+
+        function createSkeletonPostElement() {
+            const div = document.createElement('div');
+            div.className = 'p-4 border-b border-gray-200 dark:border-slate-700 flex space-x-4';
+            div.innerHTML = `
+                <div class="w-12 h-12 rounded-full skeleton flex-shrink-0"></div>
+                <div class="w-full space-y-3">
+                    <div class="flex justify-between items-center">
+                        <div class="w-1/2 h-5 skeleton"></div>
+                    </div>
+                    <div class="w-full h-4 skeleton"></div>
+                    <div class="w-3/4 h-4 skeleton"></div>
+                    <div class="w-full h-48 skeleton mt-2 !rounded-xl"></div>
+                </div>
+            `;
+            return div;
+        }
+
+        function createCommentSkeletonLoader() {
+            return `
+                <div class="p-4 animate-pulse">
+                    <div class="flex space-x-4">
+                        <div class="w-12 h-12 rounded-full bg-gray-200 dark:bg-slate-700 flex-shrink-0"></div>
+                        <div class="w-full space-y-3">
+                            <div class="w-1/2 h-5 bg-gray-200 dark:bg-slate-700 rounded"></div>
+                            <div class="w-full h-4 bg-gray-200 dark:bg-slate-700 rounded"></div>
+                            <div class="w-3/4 h-4 bg-gray-200 dark:bg-slate-700 rounded"></div>
+                        </div>
+                    </div>
+                    <hr class="my-4 border-gray-200 dark:border-slate-600">
+                    <div class="flex space-x-3 mt-4">
+                        <div class="w-10 h-10 rounded-full bg-gray-200 dark:bg-slate-700 flex-shrink-0"></div>
+                        <div class="flex-1 space-y-2">
+                            <div class="w-1/3 h-4 bg-gray-200 dark:bg-slate-700 rounded"></div>
+                            <div class="w-full h-8 bg-gray-200 dark:bg-slate-700 rounded-xl"></div>
+                        </div>
+                    </div>
+                    <div class="flex space-x-3 mt-4">
+                        <div class="w-10 h-10 rounded-full bg-gray-200 dark:bg-slate-700 flex-shrink-0"></div>
+                        <div class="flex-1 space-y-2">
+                            <div class="w-1/4 h-4 bg-gray-200 dark:bg-slate-700 rounded"></div>
+                            <div class="w-full h-12 bg-gray-200 dark:bg-slate-700 rounded-xl"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function showConfirmModal(message, onConfirm, { title = 'Konfirmasi Hapus', confirmText = 'Hapus', cancelText = 'Batal' } = {}) {
+            const confirmModal = document.getElementById('confirm-modal');
+            document.getElementById('confirm-modal-title').textContent = title;
+            document.getElementById('confirm-modal-message').textContent = message;
+            document.getElementById('confirm-modal-confirm').textContent = confirmText;
+            document.getElementById('confirm-modal-cancel').textContent = cancelText;
+            confirmCallbackHolder = onConfirm;
+            confirmModal.classList.remove('hidden');
+            confirmModal.classList.add('flex');
+            setTimeout(() => confirmModal.classList.add('is-visible'), 10);
+        }
+
+        function hideConfirmModal() {
+            const confirmModal = document.getElementById('confirm-modal');
+            confirmModal.classList.remove('is-visible');
+            setTimeout(() => {
+                confirmModal.classList.add('hidden');
+                confirmModal.classList.remove('flex');
+            }, 250);
+        }
+
+        function setupModalListeners() {
+            const confirmModal = document.getElementById('confirm-modal');
+            const confirmBtn = document.getElementById('confirm-modal-confirm');
+            const cancelBtn = document.getElementById('confirm-modal-cancel');
+
+            confirmBtn.addEventListener('click', () => {
+                if (typeof confirmCallbackHolder === 'function') {
+                    confirmCallbackHolder();
+                }
+                hideConfirmModal();
+            });
+
+            cancelBtn.addEventListener('click', hideConfirmModal);
+            confirmModal.addEventListener('click', (e) => {
+                if (e.target === confirmModal) {
+                    hideConfirmModal();
+                }
+            });
+        }
+
+        function setupVideoAutoplay() {
+            const videos = document.querySelectorAll('#timeline video, #modal-content video');
+            if (window.videoObserver) {
+                window.videoObserver.disconnect();
+            }
+            if ('IntersectionObserver' in window) {
+                const observerOptions = { root: null, rootMargin: '0px', threshold: 0.8 };
+                const handleVideo = (entries, observer) => {
+                    entries.forEach(entry => {
+                        const video = entry.target;
+                        if (entry.isIntersecting) {
+                            video.play().catch(e => {});
+                        } else {
+                            video.pause();
+                        }
+                    });
+                };
+                window.videoObserver = new IntersectionObserver(handleVideo, observerOptions);
+                videos.forEach(video => window.videoObserver.observe(video));
+            }
+        }
+
+        function highlightActiveNav() {
+            const bottomNav = document.getElementById('bottom-nav');
+            if (!bottomNav) return;
+            const links = bottomNav.querySelectorAll('a');
+            const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+            links.forEach(link => {
+                const linkPage = link.getAttribute('href').split('/').pop();
+                const icon = link.querySelector('i');
+                if (linkPage === currentPage) {
+                    link.classList.remove('text-gray-500', 'dark:text-slate-400');
+                    link.classList.add('text-black', 'dark:text-white');
+                    if (icon.classList.contains('bi-house-door')) icon.className = 'bi bi-house-door-fill text-2xl';
+                    else if (icon.classList.contains('bi-search')) icon.className = 'bi bi-search-heart-fill text-2xl';
+                    else if (icon.classList.contains('bi-bell')) icon.className = 'bi bi-bell-fill text-2xl';
+                    else if (icon.classList.contains('bi-person')) icon.className = 'bi bi-person-fill text-2xl';
+                }
+            });
+        }
+        
+        function showToast(message) {
+            const toast = document.getElementById('toast-notification');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+        
+        function updateTabUI() {
+            const indicator = document.getElementById('tab-indicator');
+            const forYouBtn = forYouTab;
+            const followingBtn = followingTab;
+
+            if (!indicator || !forYouBtn || !followingBtn) return;
+
+            if (activeTab === 'for-you') {
+                forYouBtn.classList.add('text-black', 'dark:text-white');
+                forYouBtn.classList.remove('text-gray-500', 'dark:text-slate-400');
+                followingBtn.classList.add('text-gray-500', 'dark:text-slate-400');
+                followingBtn.classList.remove('text-black', 'dark:text-white');
+                
+                indicator.style.left = `${forYouBtn.offsetLeft}px`;
+                indicator.style.width = `${forYouBtn.offsetWidth}px`;
+            } else {
+                followingBtn.classList.add('text-black', 'dark:text-white');
+                followingBtn.classList.remove('text-gray-500', 'dark:text-slate-400');
+                forYouBtn.classList.add('text-gray-500', 'dark:text-slate-400');
+                forYouBtn.classList.remove('text-black', 'dark:text-white');
+
+                indicator.style.left = `${followingBtn.offsetLeft}px`;
+                indicator.style.width = `${followingBtn.offsetWidth}px`;
+            }
+        }
+
+        function switchTab(tabName) {
+            if (activeTab === tabName) return;
+            activeTab = tabName;
+            mainScrollContainer.scrollTop = 0; // Scroll to top on tab change
+            updateTabUI();
+            fetchPosts(false);
+        }
+
+        async function initialize() { 
+            const { data: { session } } = await db.auth.getSession();
+            if (!session) {
+                window.location.href = 'auth.html';
+                return;
+            }
+            currentUser = session.user;
+
+            if(currentUser.id === '6ebc1ca0-b22d-4cba-9049-76051742da2f') {
+                promoteButton.classList.remove('hidden');
+            }
+
+            const { data: profileData } = await db.from('profiles').select('username, is_verified, is_founder, is_security, is_one').eq('id', currentUser.id).single();
+            if (profileData) {
+                currentUserProfile = profileData;
+                document.getElementById('profile-link-sidebar').href = `profile.html?user_id=${currentUser.id}`;
+                document.getElementById('profile-link-bottom').href = `profile.html?user_id=${currentUser.id}`;
+            }
+            
+            const { data: followsData } = await db.from('follows').select('following_id').eq('follower_id', currentUser.id).eq('status', 'accepted');
+            if (followsData) {
+                followingIds = followsData.map(f => f.following_id);
+            }
+
+            await fetchPosts();
+            updateTabUI(); 
+            setupModalListeners();
+            subscribeToChanges();
+            subscribeToNotifications();
+            highlightActiveNav();
+
+            mainScrollContainer.addEventListener('scroll', () => {
+                if (isLoading || allPostsLoaded) return;
+                if (mainScrollContainer.scrollTop + mainScrollContainer.clientHeight >= mainScrollContainer.scrollHeight - 300) {
+                    fetchPosts(true);
+                }
+            });
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const postIdFromUrl = urlParams.get('post_id');
+            if (postIdFromUrl) openCommentModal(postIdFromUrl);
+
+            // Bug Hunter Sheet Logic
+            if (!localStorage.getItem('bugHunterSheetClosed')) {
+                setTimeout(() => {
+                    bugHunterSheet.classList.add('is-visible');
+                }, 2000); // Show after 2 seconds
+            }
+        }
+
+        async function fetchPosts(loadMore = false) {
+            if (isLoading) return;
+            
+            if (!loadMore) {
+                currentPage = 0;
+                allPostsLoaded = false;
+                timeline.innerHTML = '';
+                for (let i = 0; i < POSTS_PER_PAGE; i++) {
+                    timeline.appendChild(createSkeletonPostElement());
+                }
+            }
+            
+            isLoading = true;
+            if (loadMore) {
+                loadingIndicator.classList.add('visible');
+            }
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const hashtagFromUrl = urlParams.get('hashtag');
+            
+            const tabContainer = document.getElementById('tab-container');
+            const hashtagHeader = document.getElementById('hashtag-header-title');
+
+            if (hashtagFromUrl) {
+                tabContainer.classList.add('hidden');
+                hashtagHeader.classList.remove('hidden');
+                // FIX: Menangani potensi XSS pada hashtag di URL. textContent lebih aman dari innerHTML.
+                hashtagHeader.textContent = `#${escapeHTML(hashtagFromUrl)}`;
+            } else {
+                tabContainer.classList.remove('hidden');
+                hashtagHeader.classList.add('hidden');
+            }
+            
+            let query = db.from('posts').select(`*, profiles(*), likes(user_id), reactions(*), comments(count), poll_votes(user_id, option_text)`);
+            
+            const from = currentPage * POSTS_PER_PAGE;
+            const to = from + POSTS_PER_PAGE - 1;
+            query = query.range(from, to);
+
+            if (hashtagFromUrl) {
+                query = query.contains('hashtags', `{${hashtagFromUrl.toLowerCase()}}`).order('created_at', { ascending: false });
+            } else if (activeTab === 'following') {
+                const usersToFetch = [...followingIds, currentUser.id];
+                query = query.in('user_id', usersToFetch).order('created_at', { ascending: false });
+            } else {
+                query = query.order('created_at', { ascending: false });
+            }
+            
+            const { data: posts, error } = await query;
+
+            if (!loadMore) {
+                timeline.innerHTML = '';
+            }
+            
+            if (error) {
+                console.error('Error fetching posts:', error.message || error);
+                if (!loadMore) {
+                    timeline.innerHTML = `<p class="p-4 text-center text-red-500">Gagal memuat postingan. Coba lagi nanti.</p>`;
+                }
+                isLoading = false;
+                if (loadMore) loadingIndicator.classList.remove('visible');
+                return;
+            }
+            
+            let filteredPosts = posts.filter(post => {
+                const author = post.profiles;
+                if (!author) return false;
+                if (post.is_promotion) return true; 
+                if (author.id === currentUser.id) return true;
+                if (!author.is_private) return true;
+                if (author.is_private && followingIds.includes(author.id)) return true;
+                return false;
+            });
+
+            function shuffle(array) {
+                if (activeTab === 'for-you' && !hashtagFromUrl) {
+                    for (let i = array.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [array[i], array[j]] = [array[j], array[i]];
+                    }
+                }
+                return array;
+            }
+            
+            filteredPosts = shuffle(filteredPosts);
+
+            const promotions = filteredPosts.filter(p => p.is_promotion);
+            const regularPosts = filteredPosts.filter(p => !p.is_promotion);
+            const finalPosts = [...promotions, ...regularPosts];
+
+            if (finalPosts.length === 0 && !loadMore) {
+                timeline.innerHTML = `<p class="p-4 text-center text-gray-500 dark:text-slate-400">Tidak ada postingan untuk ditampilkan.</p>`;
+            } else {
+                const postElements = finalPosts.map((post, index) => {
+                    const postElement = createPostElement(post);
+                    postElement.style.animationDelay = `${index * 100}ms`;
+                    return postElement;
+                });
+                timeline.append(...postElements);
+            }
+            
+            if (posts.length < POSTS_PER_PAGE) {
+                allPostsLoaded = true;
+            }
+
+            currentPage++;
+            isLoading = false;
+            if (loadMore) loadingIndicator.classList.remove('visible');
+            setupVideoAutoplay();
+        }
+        
+        function subscribeToChanges() {
+            db.channel('public-changes')
+              .on('postgres_changes', { event: '*', schema: 'public', table: 'likes' }, (payload) => handleLikeChange(payload.new?.post_id || payload.old?.post_id))
+              .on('postgres_changes', { event: '*', schema: 'public', table: 'reactions' }, (payload) => {
+                  const postId = payload.new?.post_id || payload.old?.post_id;
+                  updatePostReactionsUI(postId);
+                  if (activePostForComment?.id == postId) {
+                      updatePostReactionsUI(postId, modalContent);
+                  }
+              })
+              .on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, (payload) => {
+                  if (payload.eventType === 'INSERT') {
+                      handleCommentInsert(payload.new);
+                  } else if (payload.eventType === 'UPDATE') {
+                      handleCommentLikeChange(payload.new.id);
+                  }
+              })
+              .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'posts' }, async (payload) => {
+                    const postId = payload.new.id;
+                    const postElement = document.getElementById(`post-${postId}`);
+                    const modalPostElement = document.querySelector(`#modal-content #post-${postId}`);
+                    if (payload.new.is_poll && (postElement || modalPostElement)) {
+                        const { data: updatedPost, error } = await db.from('posts').select('poll_options, poll_votes(user_id, option_text)').eq('id', postId).single();
+                        if (error) { return; }
+                        if (postElement) { updatePollUI(postId, updatedPost.poll_options, updatedPost.poll_votes); }
+                        if (modalPostElement) { updatePollUI(postId, updatedPost.poll_options, updatedPost.poll_votes, modalContent); }
+                    }
+              })
+              .subscribe();
+        }
+
+        async function subscribeToNotifications() {
+            const updateBadge = async () => {
+                const { count } = await db.from('notifications').select('*', { count: 'exact', head: true }).eq('recipient_id', currentUser.id).eq('is_read', false);
+                const badges = [document.getElementById('notification-badge-sidebar'), document.getElementById('notification-badge-bottom')];
+                badges.forEach(badge => {
+                    if (!badge) return;
+                    if (count > 0) {
+                        badge.classList.remove('hidden');
+                    } else {
+                        badge.classList.add('hidden');
+                    }
+                });
+            };
+            await updateBadge();
+            db.channel('public:notifications')
+              .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `recipient_id=eq.${currentUser.id}` }, updateBadge)
+              .subscribe();
+        }
+        
+        async function handleLikeChange(postId, elementContext = null) {
+            if (recentlyUpdatedPostLikes.has(postId)) return;
+            const postElement = elementContext || document.getElementById(`post-${postId}`);
+            if (!postElement) return;
+            const likeButton = postElement.querySelector('.like-button:not(.like-comment-button)');
+            if (!likeButton) return;
+            const { data, error } = await db.from('posts').select(`likes(user_id)`).eq('id', postId).single();
+            if (error) return;
+            const likeCountSpan = likeButton.querySelector('.like-count');
+            const icon = likeButton.querySelector('i');
+            const likes = data.likes || [];
+            const likeCount = likes.length;
+            const userHasLiked = likes.some(like => like.user_id === currentUser.id);
+            likeCountSpan.textContent = likeCount;
+            likeButton.dataset.liked = userHasLiked;
+            likeButton.classList.toggle('text-red-500', userHasLiked);
+            icon.classList.toggle('bi-heart-fill', userHasLiked);
+            icon.classList.toggle('bi-heart', !userHasLiked);
+        }
+
+        async function handleCommentLikeChange(commentId) {
+            if (recentlyUpdatedCommentLikes.has(commentId)) return;
+            const commentElement = document.getElementById(`comment-${commentId}`);
+            if (!commentElement) return;
+            const { data: comment, error } = await db.from('comments').select('liked_by').eq('id', commentId).single();
+            if (error) { return; }
+            const likeButton = commentElement.querySelector('.like-comment-button');
+            if (!likeButton) return;
+            const liked_by = comment.liked_by || [];
+            const userHasLiked = liked_by.includes(currentUser.id);
+            const likeCount = liked_by.length;
+            likeButton.dataset.liked = userHasLiked;
+            likeButton.querySelector('.comment-like-count').textContent = likeCount;
+            const icon = likeButton.querySelector('i');
+            likeButton.classList.toggle('text-red-500', userHasLiked);
+            icon.classList.toggle('bi-heart-fill', userHasLiked);
+            icon.classList.toggle('bi-heart', !userHasLiked);
+        }
+
+        function handleCommentInsert(newComment) {
+            const postElement = document.getElementById(`post-${newComment.post_id}`);
+            if(postElement) {
+                const countSpan = postElement.querySelector('.comment-count');
+                countSpan.textContent = parseInt(countSpan.textContent) + 1;
+            }
+            if (commentModal.classList.contains('is-visible') && activePostForComment && newComment.post_id === activePostForComment.id) {
+                openCommentModal(activePostForComment.id);
+            }
+        }
+        
+        function createPostElement(post) { 
+            const div = document.createElement('div');
+            div.className = 'p-4 border-b border-gray-200 dark:border-slate-700 flex space-x-4 post-enter-animation';
+            div.id = `post-${post.id}`;
+            div.dataset.postObject = JSON.stringify(post);
+            const profile = post.profiles;
+            if (!profile) return div;
+            const userHasLiked = (post.likes || []).some(like => like.user_id === currentUser.id);
+            const likeCount = (post.likes || []).length;
+            const commentCount = post.comments && post.comments[0] ? post.comments[0].count : 0;
+            
+            const profilePicUrl = profile.profile_avatar_url || getAvatarFallback(profile.full_name);
+            
+            const escapedContent = escapeHTML(post.content);
+            // FIX: Mengamankan tautan profil dan hashtag agar tidak bisa diserang XSS
+            const processedContent = escapedContent.replace(/@(\w+)|#(\w+)/g, (match, mention, hashtag) => {
+                if (mention) return `<a href="profile.html?username=${encodeURIComponent(mention)}" class="text-blue-500 hover:underline">@${escapeHTML(mention)}</a>`;
+                if (hashtag) return `<a href="index.html?hashtag=${encodeURIComponent(hashtag.toLowerCase())}" class="text-blue-500 hover:underline">#${escapeHTML(hashtag)}</a>`;
+                return match; 
+            });
+
+            let copiedLabelHtml = '';
+            if (post.last_copied_at) {
+                 const copiedDate = new Date(post.last_copied_at);
+                 const createdDate = new Date(post.created_at);
+                 if (Date.now() - copiedDate.getTime() < 5 * 60 * 1000 && Math.abs(copiedDate.getTime() - createdDate.getTime()) > 1000) {
+                    copiedLabelHtml = `<div class="copied-post-label dark:bg-slate-700 dark:text-slate-300"><i class="bi bi-link-45deg"></i> Baru saja dibagikan</div>`;
+                 }
+            }
+            
+            let postContentHtml = '';
+            if (post.is_poll) {
+                const pollVotes = post.poll_votes || [];
+                const userVote = pollVotes.find(v => v.user_id === currentUser.id);
+                const totalVotes = post.poll_options.reduce((sum, opt) => sum + opt.votes, 0);
+                const optionsHtml = post.poll_options.map(option => {
+                    const percent = totalVotes > 0 ? Math.round((option.votes / totalVotes) * 100) : 0;
+                    const hasVotedThis = userVote && userVote.option_text === option.option;
+                    const showResults = !!userVote;
+                    return `<div class="poll-option-display ${hasVotedThis ? 'voted-by-user' : ''}" data-option="${escapeHTML(option.option)}" data-post-id="${post.id}">
+                                <div class="poll-option-bar" style="width: ${showResults ? percent : 0}%;"></div>
+                                <div class="poll-option-text-container">
+                                    <span>${escapeHTML(option.option)}</span>
+                                    ${showResults ? `<span class="poll-option-percent">${percent}%</span>` : ''}
+                                </div>
+                            </div>`;
+                }).join('');
+                postContentHtml = `<p class="my-2 whitespace-pre-wrap">${processedContent}</p>
+                    <div class="mt-3 space-y-2 poll-container" id="poll-${post.id}">
+                        <p class="font-bold text-lg">${escapeHTML(post.poll_question)}</p>
+                        <div class="space-y-2">${optionsHtml}</div>
+                        <p class="text-xs text-gray-500 dark:text-slate-400 text-right">${totalVotes} suara</p>
+                    </div>`;
+            } else if (post.is_full_text) {
+                postContentHtml = `<div class="my-2 p-8 rounded-2xl flex items-center justify-center text-center text-white ${post.bg_color} min-h-[12rem]"><p class="text-2xl ${post.font_family}">${processedContent}</p></div>`;
+            } else {
+                let mediaHtml = '';
+                if (post.image_url) mediaHtml = `<img src="${escapeHTML(post.image_url)}" loading="lazy" class="mt-2 rounded-2xl border border-black/10 dark:border-white/10 w-full object-cover">`;
+                else if (post.video_url) mediaHtml = `<div class="mt-2 custom-video-player" data-post-id="${post.id}">
+                                    <video src="${escapeHTML(post.video_url)}" preload="metadata" class="w-full h-full" loop muted playsinline onerror="this.closest('.custom-video-player').innerHTML = '<div class=\\'text-center p-8 bg-gray-100 dark:bg-slate-800 rounded-2xl text-gray-500 flex items-center justify-center min-h-[200px]\\'>Gagal memuat video.</div>'"></video>
+                                    <div class="video-controls-overlay"> <button class="play-pause-btn interactive-btn"><i class="bi bi-play-fill text-3xl"></i></button> <button class="volume-btn"><i class="bi bi-volume-mute-fill"></i></button> </div>
+                                    <div class="video-progress-bar"><div class="video-progress-filled"></div></div>
+                                </div>`;
+                postContentHtml = `<p class="my-2 whitespace-pre-wrap">${processedContent}</p>${mediaHtml}`;
+            }
+
+            if (post.is_promotion && post.promotion_link) {
+                const safeLink = post.promotion_link.startsWith('http') ? post.promotion_link : '#';
+                postContentHtml += `<div class="mt-3"><a href="${safeLink}" target="_blank" rel="noopener noreferrer" class="w-full block bg-blue-500 text-white text-center py-2 rounded-lg font-semibold hover:bg-blue-600 transition-colors">${escapeHTML(post.promotion_button_text) || 'Learn More'}</a></div>`;
+            }
+
+            const reactions = post.reactions || [];
+            const reactionCounts = reactions.reduce((acc, reaction) => {
+                acc[reaction.reaction_type] = (acc[reaction.reaction_type] || 0) + 1;
+                return acc;
+            }, {});
+            const sortedReactions = Object.entries(reactionCounts).sort((a, b) => b[1] - a[1]);
+            const userReaction = reactions.find(r => r.user_id === currentUser.id);
+            const reactionSummaryHtml = sortedReactions.map(([type, count]) => `<div class="reaction-pill dark:bg-indigo-900/50 dark:text-indigo-200 ${userReaction?.reaction_type === type ? 'user-reacted dark:bg-indigo-700 dark:border-indigo-400' : ''}"><span>${escapeHTML(type)}</span><span class="font-bold ml-1">${count}</span></div>`).join('');
+            
+            const sponsoredLabel = post.is_promotion ? `<p class="text-xs text-gray-500 dark:text-slate-400 font-semibold mt-1">Sponsored by ${escapeHTML(profile.full_name)}</p>` : '';
+            
+            // Generate labels based on user profile data
+            let labelsHtml = '';
+            if (profile.is_verified) {
+                labelsHtml += `<span class="ml-1 text-blue-500"><i class="bi bi-patch-check-fill"></i></span>`;
+            }
+            if (profile.is_founder) {
+                labelsHtml += `<span class="founder-label">Founder</span>`;
+            }
+            if (profile.is_security) {
+                labelsHtml += `<span class="security-label">Security</span>`;
+            }
+            if (profile.is_one) {
+                labelsHtml += `<span class="one-label">ONE</span>`;
+            }
+
+            div.innerHTML = `
+                <div><a href="profile.html?user_id=${profile.id}"><img src="${profilePicUrl}" alt="Profile Picture" class="w-12 h-12 rounded-full bg-gray-200 dark:bg-slate-700 object-cover flex-shrink-0" loading="lazy"></a></div>
+                <div class="w-full">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <a href="profile.html?user_id=${profile.id}" class="hover:underline">
+                                <p class="font-bold flex items-center">${escapeHTML(profile.full_name)}${labelsHtml}
+                                <span class="ml-2 text-sm text-gray-500 dark:text-slate-400 font-normal">@${escapeHTML(profile.username)}</span></p>
+                            </a>
+                            <p class="text-xs text-gray-500 dark:text-slate-400">${new Date(post.created_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}</p>
+                        </div>
+                        ${post.user_id === currentUser.id ? `<button data-post-id="${post.id}" class="delete-post-button text-gray-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 text-xl">&times;</button>` : ''}
+                    </div>
+                    ${copiedLabelHtml}
+                    ${postContentHtml}
+                    ${sponsoredLabel}
+                    <div class="reaction-summary">${reactionSummaryHtml}</div>
+                    <div class="flex items-center justify-around text-gray-500 dark:text-slate-400 mt-3">
+                        <button data-post-id="${post.id}" class="comment-button flex items-center space-x-1 icon-btn hover:text-blue-500 interactive-btn"><i class="bi bi-chat text-xl"></i><span class="comment-count">${commentCount}</span></button>
+                        <button data-post-id="${post.id}" data-liked="${userHasLiked}" class="like-button flex items-center space-x-1 icon-btn ${userHasLiked ? 'text-red-500' : 'hover:text-red-500'} interactive-btn"><i class="bi ${userHasLiked ? 'bi-heart-fill' : 'bi-heart'} text-xl"></i><span class="like-count">${likeCount}</span></button>
+                        <button data-post-id="${post.id}" class="copy-link-button icon-btn hover:text-green-500 interactive-btn"><i class="bi bi-link-45deg text-xl"></i></button>
+                        <div data-post-id="${post.id}" class="reactions-container relative">
+                            <button class="icon-btn hover:text-yellow-500 ${userReaction ? 'text-yellow-500' : ''} interactive-btn"><i class="bi bi-emoji-smile text-xl"></i></button>
+                        </div>
+                    </div>
+                </div>`;
+            
+            const video = div.querySelector('video');
+            if (video) {
+                const playPauseIcon = div.querySelector('.play-pause-btn i');
+                video.addEventListener('play', () => { if(playPauseIcon) playPauseIcon.className = 'bi bi-pause-fill text-3xl'; });
+                video.addEventListener('pause', () => { if(playPauseIcon) playPauseIcon.className = 'bi bi-play-fill text-3xl'; });
+            }
+            return div;
+        }
+
+        async function updatePostReactionsUI(postId, elementContext = null) {
+            const postElement = elementContext ? elementContext.querySelector(`[id='post-${postId}']`) : document.getElementById(`post-${postId}`);
+            if (!postElement) return;
+            const { data: reactions, error } = await db.from('reactions').select('*').eq('post_id', postId);
+            if (error) return;
+            const reactionCounts = reactions.reduce((acc, r) => { acc[r.reaction_type] = (acc[r.reaction_type] || 0) + 1; return acc; }, {});
+            const sortedReactions = Object.entries(reactionCounts).sort((a, b) => b[1] - a[1]);
+            const userReaction = reactions.find(r => r.user_id === currentUser.id);
+            const summaryContainer = postElement.querySelector('.reaction-summary');
+            if (summaryContainer) summaryContainer.innerHTML = sortedReactions.map(([type, count]) => `<div class="reaction-pill dark:bg-indigo-900/50 dark:text-indigo-200 ${userReaction?.reaction_type === type ? 'user-reacted dark:bg-indigo-700 dark:border-indigo-400' : ''}"><span>${escapeHTML(type)}</span><span class="font-bold ml-1">${count}</span></div>`).join('');
+            const reactionButton = postElement.querySelector('.reactions-container button');
+            if (reactionButton) reactionButton.classList.toggle('text-yellow-500', !!userReaction);
+        }
+
+        function updatePollUI(postId, pollOptions, pollVotes, elementContext = document) {
+            const pollContainer = elementContext.querySelector(`#poll-${postId}`);
+            if (!pollContainer) return;
+            const userVote = (pollVotes || []).find(v => v.user_id === currentUser.id);
+            const totalVotes = (pollOptions || []).reduce((sum, opt) => sum + (opt.votes || 0), 0);
+            pollContainer.querySelectorAll('.poll-option-display').forEach(optionEl => {
+                const optionText = optionEl.dataset.option;
+                const optionData = pollOptions.find(o => o.option === optionText);
+                if (!optionData) return;
+
+                const hasVotedThis = userVote && userVote.option_text === optionText;
+                optionEl.classList.toggle('voted-by-user', hasVotedThis);
+
+                const percent = totalVotes > 0 ? Math.round(((optionData.votes || 0) / totalVotes) * 100) : 0;
+                const progressBar = optionEl.querySelector('.poll-option-bar');
+                let percentTextEl = optionEl.querySelector('.poll-option-percent');
+                const textContainer = optionEl.querySelector('.poll-option-text-container');
+
+                if (userVote) { // Show results if user has voted
+                    if (progressBar) progressBar.style.width = `${percent}%`;
+                    if (!percentTextEl) {
+                        const newPercentEl = document.createElement('span');
+                        newPercentEl.className = 'poll-option-percent';
+                        newPercentEl.textContent = `${percent}%`;
+                        textContainer.appendChild(newPercentEl);
+                    } else {
+                        percentTextEl.textContent = `${percent}%`;
+                    }
+                } else { // Hide results if user retracts vote
+                    if (progressBar) progressBar.style.width = '0%';
+                    if (percentTextEl) percentTextEl.remove();
+                }
+            });
+            const totalVotesEl = pollContainer.querySelector('.text-right');
+            if(totalVotesEl) totalVotesEl.textContent = `${totalVotes} suara`;
+        }
+        
+        async function updatePostPollData(postId) {
+            const { data: allVotes, error: votesError } = await db.from('poll_votes').select('option_text').eq('post_id', postId);
+            if (votesError) return console.error('Error fetching votes:', votesError);
+            const { data: post, error: postError } = await db.from('posts').select('poll_options').eq('id', postId).single();
+            if (postError) return console.error('Error fetching post data:', postError);
+            const newPollOptions = post.poll_options.map(option => ({ ...option, votes: 0 }));
+            allVotes.forEach(vote => { const optionToUpdate = newPollOptions.find(opt => opt.option === vote.option_text); if (optionToUpdate) optionToUpdate.votes++; });
+            const { error: updateError } = await db.from('posts').update({ poll_options: newPollOptions }).eq('id', postId);
+            if (updateError) console.error('Error updating post table:', updateError);
+        }
+
+        function createCommentElement(comment, profile, postOwnerId, replyCount = 0) {
+            const div = document.createElement('div');
+            div.className = `flex space-x-3 mt-4 comment-container ${comment.is_pinned ? 'comment-pinned' : ''}`;
+            div.id = `comment-${comment.id}`;
+            const profilePicUrl = profile.profile_avatar_url || getAvatarFallback(profile.full_name);
+            const liked_by = comment.liked_by || [];
+            const userHasLiked = liked_by.includes(currentUser.id);
+            const likeCount = liked_by.length;
+            const isPostOwner = currentUser.id === postOwnerId;
+            const isCommentOwner = currentUser.id === comment.user_id;
+            let replyToMentionSpan = '';
+            // FIX: Menggunakan encodeURIComponent untuk URL dan escapeHTML untuk teks yang ditampilkan.
+            if (comment.reply_to_username) replyToMentionSpan = `<a href="profile.html?username=${encodeURIComponent(comment.reply_to_username)}" class="text-blue-500 hover:underline mr-1">@${escapeHTML(comment.reply_to_username)}</a>`;
+            
+            const escapedContent = escapeHTML(comment.content);
+            const processedContent = escapedContent.replace(/@(\w+)/g, (match, mention) => {
+                 return `<a href="profile.html?username=${encodeURIComponent(mention)}" class="text-blue-500 hover:underline">@${escapeHTML(mention)}</a>`;
+            });
+            
+            const repliesContainerHtml = `<div class="replies-container hidden pl-10"></div>`;
+            const showRepliesButton = replyCount > 0 ? `<button class="toggle-replies-button text-sm text-blue-500 font-semibold mt-2">Lihat ${replyCount} balasan</button>` : '';
+
+             // Generate labels based on user profile data
+            let labelsHtml = '';
+            if (profile.is_verified) {
+                labelsHtml += `<span class="ml-1 text-blue-500"><i class="bi bi-patch-check-fill"></i></span>`;
+            }
+            if (profile.is_founder) {
+                labelsHtml += `<span class="founder-label">Founder</span>`;
+            }
+            if (profile.is_security) {
+                labelsHtml += `<span class="security-label">Security</span>`;
+            }
+            if (profile.is_one) {
+                labelsHtml += `<span class="one-label">ONE</span>`;
+            }
+            
+            div.innerHTML = `<img src="${profilePicUrl}" loading="lazy" class="w-10 h-10 rounded-full bg-gray-200 dark:bg-slate-700 flex-shrink-0 object-cover"><div class="flex-1"><div class="bg-gray-100 dark:bg-slate-700 rounded-xl p-3">${comment.is_pinned ? '<div class="text-xs text-gray-500 dark:text-slate-400 font-semibold mb-2 flex items-center"><i class="bi bi-pin-angle-fill mr-1.5"></i>Disematkan oleh Pemilik</div>' : ''}<div class="flex justify-between items-center"><a href="profile.html?user_id=${profile.id}" class="font-bold hover:underline text-sm flex items-center">${escapeHTML(profile.full_name)}${labelsHtml}</a><div class="flex items-center text-gray-400 dark:text-slate-500">${isPostOwner && !comment.parent_comment_id ? `<button class="pin-comment-button p-1 hover:text-blue-500" data-comment-id="${comment.id}" data-pinned="${comment.is_pinned}"><i class="bi bi-pin-angle"></i></button>` : ''}${isCommentOwner || isPostOwner ? `<button class="delete-comment-button p-1 hover:text-red-500 dark:hover:text-red-400" data-comment-id="${comment.id}"><i class="bi bi-trash"></i></button>` : ''}</div></div><p class="text-sm mt-1">${replyToMentionSpan}${processedContent}</p></div><div class="flex items-center space-x-4 text-xs text-gray-500 dark:text-slate-400 mt-1 pl-2"><button data-comment-id="${comment.id}" data-liked="${userHasLiked}" class="like-comment-button flex items-center space-x-1 font-semibold ${userHasLiked ? 'text-red-500' : 'hover:text-red-500'} interactive-btn"><i class="bi ${userHasLiked ? 'bi-heart-fill' : 'bi-heart'}"></i><span>Suka</span>(<span class="comment-like-count">${likeCount}</span>)</button><button class="reply-button font-semibold hover:underline interactive-btn" data-comment-id="${comment.id}" data-username="${escapeHTML(profile.username)}">Balas</button><span>${new Date(comment.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute:'2-digit' })}</span></div>${showRepliesButton}${repliesContainerHtml}</div>`;
+            return div;
+        }
+
+        async function openCommentModal(postId) {
+            document.querySelectorAll('#timeline video').forEach(v => { if (window.videoObserver) window.videoObserver.unobserve(v); v.pause(); v.muted = true; const p = v.closest('.custom-video-player'); if (p) { const i = p.querySelector('.volume-btn i'); if (i) i.className = 'bi bi-volume-mute-fill'; } });
+            modalContent.innerHTML = createCommentSkeletonLoader();
+            commentModal.classList.remove('hidden');
+            commentModal.classList.add('flex');
+            setTimeout(() => commentModal.classList.add('is-visible'), 10);
+            const { data: post, error: postError } = await db.from('posts').select(`*, profiles(is_founder, is_security, is_one, is_verified, full_name, username, profile_avatar_url), likes(user_id), reactions(*), comments(count), poll_votes(user_id, option_text)`).eq('id', postId).single();
+            if (postError) { modalContent.innerHTML = '<p>Gagal memuat postingan.</p>'; return; }
+            activePostForComment = post;
+            const { data: comments, error: commentsError } = await db.from('comments').select(`*`).eq('post_id', postId);
+            if (commentsError) { modalContent.innerHTML = '<p>Gagal memuat komentar.</p>'; return; }
+            commentsById.clear();
+            comments.forEach(c => commentsById.set(c.id, c));
+            const userIds = [...new Set(comments.map(c => c.user_id))];
+            const { data: profiles, error: profilesError } = await db.from('profiles').select('*').in('id', userIds);
+            if (profilesError) { modalContent.innerHTML = '<p>Gagal memuat profil.</p>'; return; }
+            const profilesMap = new Map(profiles.map(p => [p.id, p]));
+            const rootComments = [];
+            const repliesByParent = new Map();
+            comments.forEach(c => { if (c.parent_comment_id) { let rootId = c.parent_comment_id; let current = commentsById.get(rootId); while(current && current.parent_comment_id) { rootId = current.parent_comment_id; current = commentsById.get(rootId); } if (!repliesByParent.has(rootId)) repliesByParent.set(rootId, []); repliesByParent.get(rootId).push(c); } else { rootComments.push(c); } });
+            rootComments.sort((a, b) => b.is_pinned - a.is_pinned || new Date(a.created_at) - new Date(b.created_at));
+            const postElement = createPostElement(post);
+            postElement.classList.remove('border-b');
+            const commentListContainer = document.createElement('div');
+            commentListContainer.id = 'comment-list';
+            rootComments.forEach(comment => { const profile = profilesMap.get(comment.user_id); if (!profile) return; const replies = repliesByParent.get(comment.id) || []; replies.sort((a, b) => new Date(a.created_at) - new Date(b.created_at)); const rootEl = createCommentElement(comment, profile, post.user_id, replies.length); commentListContainer.appendChild(rootEl); const repliesContainer = rootEl.querySelector('.replies-container'); replies.forEach(reply => { const replyProfile = profilesMap.get(reply.user_id); if (!replyProfile) return; const replyEl = createCommentElement(reply, replyProfile, post.user_id); repliesContainer.appendChild(replyEl); }); });
+            modalContent.innerHTML = '';
+            modalContent.appendChild(postElement);
+            const hr = document.createElement('hr'); hr.className = 'my-4 dark:border-slate-600';
+            modalContent.appendChild(hr);
+            modalContent.appendChild(commentListContainer);
+            const videoInModal = modalContent.querySelector('video');
+            if (videoInModal) { videoInModal.muted = false; const volIcon = modalContent.querySelector('.volume-btn i'); if(volIcon) volIcon.className = 'bi bi-volume-up-fill'; videoInModal.play().catch(e => {}); }
+        }
+
+        async function parseMentions(text) {
+            const mentionRegex = /@(\w+)/g;
+            const mentions = text.match(mentionRegex);
+            if (!mentions) return { ids: [], usernames: [] };
+            const usernames = [...new Set(mentions.map(m => m.substring(1)))];
+            const { data, error } = await db.from('profiles').select('id, username').in('username', usernames);
+            if (error) { console.error("Error fetching mentioned user IDs:", error); return { ids: [], usernames: [] }; }
+            return { ids: data.map(u => u.id), usernames: data.map(u => u.username) };
+        }
+
+        function setupMentionHandler(inputElement, popupElement) {
+            let mentionStartIndex = -1;
+            inputElement.addEventListener('input', async (e) => { 
+                const text = e.target.value, cursorPos = e.target.selectionStart; 
+                const atIndex = text.lastIndexOf('@', cursorPos - 1); 
+                if (atIndex > -1 && (atIndex === 0 || /\s/.test(text[atIndex - 1]))) { 
+                    const query = text.substring(atIndex + 1, cursorPos); 
+                    if (!/\s/.test(query)) { 
+                        mentionStartIndex = atIndex; 
+                        const { data: users } = await db.from('profiles').select('username, full_name, profile_avatar_url, is_verified, is_founder, is_security, is_one').ilike('username', `${query}%`).neq('id', currentUser.id).limit(5); 
+                        if (users && users.length > 0) { 
+                            // FIX: Sanitize data dari database sebelum dimasukkan ke innerHTML
+                            popupElement.innerHTML = users.map(user => {
+                                const avatarUrl = user.profile_avatar_url || getAvatarFallback(user.full_name);
+                                return `<div class="mention-item dark:hover:bg-slate-600" data-username="${escapeHTML(user.username)}"><img src="${avatarUrl}" class="w-8 h-8 rounded-full mr-2 object-cover"><div><p class="font-semibold flex items-center">${escapeHTML(user.full_name || 'User')}${user.is_verified ? '<span class="ml-1 text-blue-500"><i class="bi bi-patch-check-fill"></i></span>' : ''}${user.is_founder ? '<span class="founder-label">Founder</span>' : ''}${user.is_security ? '<span class="security-label">Security</span>' : ''}${user.is_one ? '<span class="one-label">ONE</span>' : ''}</p><p class="text-sm text-gray-500 dark:text-slate-400">@${escapeHTML(user.username)}</p></div></div>`
+                            }).join(''); 
+                            popupElement.classList.remove('hidden'); 
+                        } else { 
+                            popupElement.classList.add('hidden'); 
+                        } 
+                    } else { 
+                        popupElement.classList.add('hidden'); 
+                    } 
+                } else { 
+                    popupElement.classList.add('hidden'); 
+                } 
+            }); 
+            popupElement.addEventListener('click', (e) => { 
+                const item = e.target.closest('.mention-item'); 
+                if (item) { 
+                    const username = item.dataset.username; 
+                    const currentText = inputElement.value; 
+                    const newText = currentText.substring(0, mentionStartIndex) + `@${username} ` + currentText.substring(inputElement.selectionStart); 
+                    inputElement.value = newText; 
+                    popupElement.classList.add('hidden'); 
+                    inputElement.focus(); 
+                    validatePostButton();
+                } 
+            });
+        }
+        
+        setupMentionHandler(postContentInput, document.getElementById('post-mention-popup'));
+        setupMentionHandler(commentInput, document.getElementById('comment-mention-popup'));
+        
+        function validatePostButton() {
+            const content = postContentInput.value.trim();
+            const charLength = postContentInput.value.length;
+            const maxChars = 300;
+            charCounter.textContent = maxChars - charLength;
+            charCounter.classList.toggle('limit-exceeded', charLength > maxChars);
+
+            if (isPollMode) {
+                const question = pollQuestionInput.value.trim();
+                const options = Array.from(pollOptionsCreator.querySelectorAll('input')).map(input => input.value.trim());
+                const hasEmptyOption = options.some(opt => opt === '');
+                const isValid = question !== '' && options.length >= 2 && !hasEmptyOption && charLength <= maxChars;
+                submitPostButton.disabled = !isValid;
+            } else {
+                 submitPostButton.disabled = (!content && !postImageFile && !postVideoFile) || charLength > maxChars;
+            }
+        }
+        
+        postContentInput.addEventListener('input', validatePostButton);
+        
+        function handleMediaUpload(event, mediaType) {
+            const file = event.target.files[0];
+            if (!file) return;
+            resetComposerStyle();
+            isPollMode = false; pollCreatorContainer.classList.add('hidden'); pollButton.classList.remove('text-orange-500');
+            postImageFile = mediaType === 'image' ? file : null;
+            postVideoFile = mediaType === 'video' ? file : null;
+            imageUploadInput.value = ''; videoUploadInput.value = '';
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                let previewHtml = '';
+                if (mediaType === 'image') {
+                    previewHtml = `<div class="preview-container"><img src="${e.target.result}" class="rounded-2xl max-h-80"><button class="remove-media-btn">&times;</button></div>`;
+                } else {
+                    previewHtml = `<div class="preview-container"><video src="${e.target.result}" class="rounded-2xl max-h-80" muted loop autoplay></video><button class="remove-media-btn">&times;</button></div>`;
+                }
+                mediaPreviewContainer.innerHTML = previewHtml;
+                mediaPreviewContainer.querySelector('.remove-media-btn').onclick = () => {
+                    postImageFile = null; postVideoFile = null; mediaPreviewContainer.innerHTML = '';
+                    validatePostButton();
+                };
+            };
+            reader.readAsDataURL(file);
+            validatePostButton();
+        }
+
+        imageUploadInput.addEventListener('change', (e) => handleMediaUpload(e, 'image'));
+        videoUploadInput.addEventListener('change', (e) => handleMediaUpload(e, 'video'));
+        
+        submitPostButton.addEventListener('click', async () => {
+            const content = postContentInput.value; 
+            if (submitPostButton.disabled) return;
+            
+            submitPostButton.disabled = true;
+            submitPostButton.textContent = 'Memposting...';
+
+            const { ids: mentionedUserIds } = await parseMentions(content);
+            const hashtags = content.match(/#(\w+)/g)?.map(h => h.substring(1).toLowerCase()) || [];
+            
+            let postData = {};
+            let error = null;
+
+            if (isPollMode) {
+                const question = pollQuestionInput.value.trim();
+                const options = Array.from(pollOptionsCreator.querySelectorAll('input'))
+                                .map(input => input.value.trim())
+                                .filter(opt => opt !== '');
+                
+                const pollOptionsData = options.map(opt => ({ option: opt, votes: 0 }));
+                postData = {
+                    user_id: currentUser.id,
+                    content: content.trim(),
+                    is_poll: true,
+                    poll_question: question,
+                    poll_options: pollOptionsData,
+                    hashtags: hashtags
+                };
+                
+            } else { 
+                let imageUrl = null, videoUrl = null;
+                const fileToUpload = postImageFile || postVideoFile;
+                if (fileToUpload && !isFullTextMode) {
+                    const fileName = `${currentUser.id}/${Date.now()}`;
+                    const { error: uploadError } = await db.storage.from('media').upload(fileName, fileToUpload);
+                    if (uploadError) { 
+                        showToast('Gagal mengunggah media.');
+                        submitPostButton.disabled = false; submitPostButton.textContent = 'Posting'; return;
+                    }
+                    const { data: urlData } = db.storage.from('media').getPublicUrl(fileName);
+                    if (postImageFile) imageUrl = urlData.publicUrl;
+                    if (postVideoFile) videoUrl = urlData.publicUrl;
+                }
+                postData = { content, user_id: currentUser.id, image_url: imageUrl, video_url: videoUrl, is_full_text: isFullTextMode, bg_color: fullTextColor, font_family: fullTextFont, mentioned_users: mentionedUserIds, hashtags: hashtags };
+            }
+            
+            const { data: newPost, error: insertError } = await db.from('posts').insert(postData).select().single();
+            
+            if (!insertError) {
+                 if (mentionedUserIds.length > 0) {
+                    const notifications = mentionedUserIds.map(userId => ({ recipient_id: userId, actor_id: currentUser.id, notification_type: isPollMode ? 'mention_post' : 'mention_post', post_id: newPost.id }));
+                    await db.from('notifications').insert(notifications);
+                }
+                postContentInput.value = '';
+                postImageFile = null; postVideoFile = null;
+                mediaPreviewContainer.innerHTML = '';
+                resetComposerStyle();
+                if (isPollMode) {
+                    isPollMode = false;
+                    pollQuestionInput.value = '';
+                    pollOptionsCreator.innerHTML = '';
+                    pollCreatorContainer.classList.add('hidden');
+                    pollButton.classList.remove('text-orange-500');
+                }
+                await fetchPosts(false); 
+            } else {
+                showToast('Gagal memposting.');
+            }
+            
+            submitPostButton.textContent = 'Posting';
+            validatePostButton();
+        });
+
+        document.body.addEventListener('click', async (e) => {
+            const player = e.target.closest('.custom-video-player');
+            if (player) {
+                const video = player.querySelector('video');
+                const volumeBtn = e.target.closest('.volume-btn');
+                if (volumeBtn) {
+                    const volumeIcon = volumeBtn.querySelector('i');
+                    video.muted = !video.muted;
+                    volumeIcon.className = video.muted ? 'bi bi-volume-mute-fill' : 'bi bi-volume-up-fill';
+                    return;
+                }
+                const progressBar = e.target.closest('.video-progress-bar');
+                if (progressBar) {
+                     const rect = progressBar.getBoundingClientRect();
+                     const clickX = e.clientX - rect.left;
+                     video.currentTime = (clickX / rect.width) * video.duration;
+                     return;
+                }
+                if (video.paused) video.play(); else video.pause();
+            }
+            
+            const pollOption = e.target.closest('.poll-option-display');
+            if (pollOption) {
+                const postElement = pollOption.closest('.post-enter-animation');
+                if (!postElement || !postElement.dataset.postObject || pollOption.getAttribute('data-processing') === 'true') return;
+
+                pollOption.setAttribute('data-processing', 'true');
+
+                let post;
+                try {
+                    post = JSON.parse(postElement.dataset.postObject);
+                } catch (err) {
+                    pollOption.removeAttribute('data-processing');
+                    return; 
+                }
+                
+                const postId = post.id;
+                const optionText = pollOption.dataset.option;
+                const userId = currentUser.id;
+
+                let pollVotes = post.poll_votes || [];
+                let pollOptions = post.poll_options || [];
+                const existingVoteIndex = pollVotes.findIndex(v => v.user_id === userId);
+                const oldOptionText = existingVoteIndex !== -1 ? pollVotes[existingVoteIndex].option_text : null;
+
+                if (oldOptionText) {
+                    const oldOption = pollOptions.find(o => o.option === oldOptionText);
+                    if (oldOption) oldOption.votes = Math.max(0, oldOption.votes - 1);
+                }
+                
+                if (oldOptionText === optionText) { 
+                    pollVotes.splice(existingVoteIndex, 1);
+                } else { 
+                    const newOption = pollOptions.find(o => o.option === optionText);
+                    if (newOption) newOption.votes++;
+                    
+                    if (existingVoteIndex !== -1) { 
+                        pollVotes[existingVoteIndex].option_text = optionText;
+                    } else { 
+                        pollVotes.push({ user_id: userId, option_text: optionText, post_id: postId });
+                    }
+                }
+                
+                post.poll_votes = pollVotes;
+                post.poll_options = pollOptions;
+                postElement.dataset.postObject = JSON.stringify(post);
+                
+                updatePollUI(postId, pollOptions, pollVotes);
+                const modalPostElement = document.querySelector(`#modal-content #post-${postId}`);
+                if (modalPostElement) {
+                   modalPostElement.dataset.postObject = JSON.stringify(post);
+                   updatePollUI(postId, pollOptions, pollVotes, modalContent);
+                }
+
+                (async () => {
+                    try {
+                        if (oldOptionText) {
+                             if (oldOptionText === optionText) { 
+                                await db.from('poll_votes').delete().match({ post_id: postId, user_id: userId });
+                             } else { 
+                                await db.from('poll_votes').update({ option_text: optionText }).match({ post_id: postId, user_id: userId });
+                             }
+                        } else { 
+                             await db.from('poll_votes').insert({ post_id: postId, user_id: userId, option_text: optionText });
+                        }
+                        await updatePostPollData(postId);
+                    } catch (error) {
+                        console.error("Poll vote DB error:", error);
+                        showToast("Gagal menyimpan suara. Mengembalikan perubahan.");
+                        const { data: refreshedPost } = await db.from('posts').select(`*, poll_votes(user_id, option_text)`).eq('id', postId).single();
+                        if (refreshedPost) {
+                           postElement.dataset.postObject = JSON.stringify(refreshedPost);
+                           updatePollUI(postId, refreshedPost.poll_options, refreshedPost.poll_votes);
+                           if (modalPostElement) {
+                               modalPostElement.dataset.postObject = JSON.stringify(refreshedPost);
+                               updatePollUI(postId, refreshedPost.poll_options, refreshedPost.poll_votes, modalContent);
+                           }
+                        }
+                    } finally {
+                        pollOption.removeAttribute('data-processing');
+                    }
+                })();
+            }
+
+            const copyLinkButton = e.target.closest('.copy-link-button');
+            if(copyLinkButton) {
+                const postId = copyLinkButton.dataset.postId;
+                const postUrl = `${window.location.origin}${window.location.pathname}?post_id=${postId}`;
+                try {
+                    const tempInput = document.createElement('textarea');
+                    tempInput.value = postUrl;
+                    document.body.appendChild(tempInput);
+                    tempInput.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(tempInput);
+
+                    showToast('Tautan disalin ke clipboard!');
+                    await db.rpc('repost_post', { post_id_to_repost: postId });
+                    const postElement = document.getElementById(`post-${postId}`);
+                    if (postElement) { postElement.classList.add('post-enter-animation'); timeline.prepend(postElement); }
+                } catch(err) { showToast('Gagal menyalin tautan.'); }
+            }
+
+            const reactionEmoji = e.target.closest('.reaction-emoji');
+            if (reactionEmoji) {
+                const postId = globalReactionPopover.dataset.postId;
+                if (!postId) return;
+                const reactionType = reactionEmoji.dataset.reaction;
+                db.rpc('toggle_reaction', { post_id_to_toggle: postId, reaction_to_set: reactionType })
+                  .then(({error}) => {
+                    if (!error) {
+                        updatePostReactionsUI(postId);
+                         if (commentModal.classList.contains('is-visible') && activePostForComment?.id == postId) {
+                           updatePostReactionsUI(postId, modalContent);
+                        }
+                    }
+                  });
+                globalReactionPopover.classList.remove('visible');
+            }
+            
+            const likeButton = e.target.closest('.like-button:not(.like-comment-button)');
+            if (likeButton) {
+                const postId = likeButton.dataset.postId;
+                if(likeButton.disabled) return;
+                likeButton.disabled = true;
+                recentlyUpdatedPostLikes.add(postId);
+                setTimeout(() => recentlyUpdatedPostLikes.delete(postId), 2000);
+                const wasLiked = likeButton.dataset.liked === 'true';
+                const likeCountSpan = likeButton.querySelector('.like-count');
+                const icon = likeButton.querySelector('i');
+                const currentCount = parseInt(likeCountSpan.textContent);
+                likeButton.dataset.liked = !wasLiked;
+                likeCountSpan.textContent = wasLiked ? currentCount - 1 : currentCount + 1;
+                likeButton.classList.toggle('text-red-500', !wasLiked);
+                icon.classList.toggle('bi-heart-fill', !wasLiked);
+                icon.classList.toggle('bi-heart', wasLiked);
+                db.rpc('toggle_like', { user_id_to_toggle: currentUser.id, post_id_to_toggle: postId })
+                    .then(({ error }) => { if (error) {
+                        likeButton.dataset.liked = wasLiked;
+                        likeCountSpan.textContent = currentCount;
+                        likeButton.classList.toggle('text-red-500', wasLiked);
+                        icon.classList.toggle('bi-heart-fill', wasLiked);
+                        icon.classList.toggle('bi-heart', !wasLiked);
+                        recentlyUpdatedPostLikes.delete(postId);
+                    }}).finally(() => { likeButton.disabled = false; });
+            }
+
+            const commentButton = e.target.closest('.comment-button');
+            if (commentButton) openCommentModal(commentButton.dataset.postId);
+            const deleteButton = e.target.closest('.delete-post-button');
+            if (deleteButton) {
+                showConfirmModal('Postingan ini akan dihapus secara permanen dan tidak dapat dikembalikan.',
+                    () => { db.from('posts').delete().eq('id', deleteButton.dataset.postId).then(({error}) => { if (!error) document.getElementById(`post-${deleteButton.dataset.postId}`).remove(); }); });
+            }
+        });
+
+        document.body.addEventListener('mouseover', e => {
+            const reactionContainer = e.target.closest('.reactions-container');
+            if (reactionContainer) {
+                clearTimeout(reactionPopoverTimeout);
+                const rect = reactionContainer.getBoundingClientRect();
+                globalReactionPopover.dataset.postId = reactionContainer.dataset.postId;
+                const popoverWidth = globalReactionPopover.offsetWidth;
+                const windowWidth = window.innerWidth;
+                let leftPos = rect.left + (rect.width / 2) - (popoverWidth / 2);
+                const margin = 8;
+                if (leftPos < margin) leftPos = margin;
+                if (leftPos + popoverWidth > windowWidth - margin) leftPos = windowWidth - popoverWidth - margin;
+                globalReactionPopover.style.left = `${leftPos}px`;
+                globalReactionPopover.style.top = `${rect.top - 45}px`;
+                globalReactionPopover.classList.add('visible');
+            }
+        });
+
+        document.body.addEventListener('mouseout', e => {
+            const reactionContainer = e.target.closest('.reactions-container');
+             if (reactionContainer) {
+                reactionPopoverTimeout = setTimeout(() => { if (!globalReactionPopover.matches(':hover')) { globalReactionPopover.classList.remove('visible'); } }, 200);
+            }
+        });
+
+        globalReactionPopover.addEventListener('mouseleave', () => { globalReactionPopover.classList.remove('visible'); });
+
+        timeline.addEventListener('timeupdate', e => {
+             if (e.target.tagName === 'VIDEO') {
+                const player = e.target.closest('.custom-video-player');
+                if (!player) return;
+                const progressFilled = player.querySelector('.video-progress-filled');
+                progressFilled.style.width = `${(e.target.currentTime / e.target.duration) * 100}%`;
+             }
+        }, true);
+        
+        fullTextStyleButton.addEventListener('click', () => { fullTextModal.classList.remove('hidden'); fullTextModal.classList.add('flex'); });
+        closeFullTextModalButton.addEventListener('click', () => { fullTextModal.classList.add('hidden'); fullTextModal.classList.remove('flex'); });
+        colorSwatches.addEventListener('click', (e) => { const button = e.target.closest('button'); if (!button) return; isFullTextMode = true; fullTextColor = button.dataset.color; updateComposerFullTextStyle(); closeFullTextModalButton.click(); });
+        fontSwatches.addEventListener('click', (e) => { const button = e.target.closest('button'); if (!button) return; isFullTextMode = true; fullTextFont = button.dataset.font || 'font-inter'; updateComposerFullTextStyle(); closeFullTextModalButton.click(); });
+        
+        // --- New Poll Creator Logic ---
+        function addPollOptionCreatorInput(value = '') {
+            const optionDiv = document.createElement('div');
+            optionDiv.className = 'flex items-center space-x-2';
+            const placeholderText = `Opsi ${pollOptionsCreator.children.length + 1}`;
+            optionDiv.innerHTML = `<input type="text" value="${value}" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-1 focus:ring-black dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:focus:ring-white" placeholder="${placeholderText}"><button type="button" class="remove-poll-option-creator text-red-500 hover:text-red-700 text-xl">&times;</button>`;
+            pollOptionsCreator.appendChild(optionDiv);
+            
+            optionDiv.querySelector('.remove-poll-option-creator').addEventListener('click', () => {
+                if (pollOptionsCreator.children.length > 2) {
+                    optionDiv.remove();
+                    // Re-number placeholders
+                    Array.from(pollOptionsCreator.querySelectorAll('input')).forEach((input, index) => {
+                        input.placeholder = `Opsi ${index + 1}`;
+                    });
+                    validatePostButton();
+                }
+            });
+            optionDiv.querySelector('input').addEventListener('input', validatePostButton);
+            validatePostButton();
+        }
+        
+        pollQuestionInput.addEventListener('input', validatePostButton);
+
+        pollButton.addEventListener('click', () => {
+            isPollMode = !isPollMode;
+            if (isPollMode) {
+                resetComposerStyle(); 
+                postImageFile = null; postVideoFile = null; mediaPreviewContainer.innerHTML = ''; imageUploadInput.value = ''; videoUploadInput.value = '';
+                pollCreatorContainer.classList.remove('hidden');
+                pollButton.classList.add('text-orange-500');
+                if (pollOptionsCreator.children.length === 0) {
+                    addPollOptionCreatorInput();
+                    addPollOptionCreatorInput();
+                }
+            } else {
+                pollCreatorContainer.classList.add('hidden');
+                pollButton.classList.remove('text-orange-500');
+                pollOptionsCreator.innerHTML = '';
+            }
+            validatePostButton();
+        });
+
+        removePollCreatorButton.addEventListener('click', () => {
+            isPollMode = false;
+            pollCreatorContainer.classList.add('hidden');
+            pollButton.classList.remove('text-orange-500');
+            pollOptionsCreator.innerHTML = '';
+            pollQuestionInput.value = '';
+            validatePostButton();
+        });
+
+        addPollOptionButton.addEventListener('click', () => {
+            if (pollOptionsCreator.children.length < 5) {
+                addPollOptionCreatorInput();
+            }
+        });
+        // --- End of New Poll Creator Logic ---
+
+        // --- START: FIX for Promote Modal ---
+        
+        function validatePromoteForm() {
+            const content = promoteContentInput.value.trim();
+            const buttonText = promoteButtonTextInput.value.trim();
+            submitPromotePostButton.disabled = !content || !buttonText;
+        }
+
+        function handlePromoteMediaUpload(event, mediaType) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            promoteImageFile = mediaType === 'image' ? file : null;
+            promoteVideoFile = mediaType === 'video' ? file : null;
+            promoteImageUpload.value = '';
+            promoteVideoUpload.value = '';
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                let previewHtml = '';
+                const removeBtnHtml = `<button class="remove-media-btn absolute top-2 right-2 bg-black/50 text-white rounded-full w-6 h-6 flex items-center justify-center text-lg">&times;</button>`;
+                if (mediaType === 'image') {
+                    previewHtml = `<div class="preview-container relative"><img src="${e.target.result}" class="rounded-lg max-h-40 object-cover w-full h-full">${removeBtnHtml}</div>`;
+                } else {
+                    previewHtml = `<div class="preview-container relative"><video src="${e.target.result}" class="rounded-lg max-h-40" muted loop autoplay></video>${removeBtnHtml}</div>`;
+                }
+                promoteMediaPreview.innerHTML = previewHtml;
+                promoteMediaPreview.querySelector('.remove-media-btn').onclick = () => {
+                    promoteImageFile = null;
+                    promoteVideoFile = null;
+                    promoteMediaPreview.innerHTML = '';
+                    validatePromoteForm();
+                };
+            };
+            reader.readAsDataURL(file);
+            validatePromoteForm();
+        }
+
+        promoteButton.addEventListener('click', () => {
+            promoteModal.classList.remove('hidden');
+            promoteModal.classList.add('flex');
+            setTimeout(() => promoteModal.classList.add('is-visible'), 10);
+        });
+
+        closePromoteModalButton.addEventListener('click', () => {
+            promoteModal.classList.remove('is-visible');
+            setTimeout(() => {
+                promoteModal.classList.add('hidden');
+                promoteModal.classList.remove('flex');
+            }, 250);
+        });
+        
+        promoteModal.addEventListener('click', (e) => {
+            if (e.target === promoteModal) {
+                closePromoteModalButton.click();
+            }
+        });
+
+        promoteImageUpload.addEventListener('change', (e) => handlePromoteMediaUpload(e, 'image'));
+        promoteVideoUpload.addEventListener('change', (e) => handlePromoteMediaUpload(e, 'video'));
+        promoteContentInput.addEventListener('input', validatePromoteForm);
+        promoteButtonTextInput.addEventListener('input', validatePromoteForm);
+        
+        submitPromotePostButton.addEventListener('click', async () => {
+            const content = promoteContentInput.value.trim();
+            const link = promoteLinkInput.value.trim();
+            const buttonText = promoteButtonTextInput.value.trim();
+
+            if (!content || !buttonText) return;
+
+            submitPromotePostButton.disabled = true;
+            submitPromotePostButton.textContent = 'Memproses...';
+
+            let imageUrl = null, videoUrl = null;
+            const fileToUpload = promoteImageFile || promoteVideoFile;
+
+            if (fileToUpload) {
+                const fileName = `${currentUser.id}/promote_${Date.now()}`;
+                const { error: uploadError } = await db.storage.from('media').upload(fileName, fileToUpload);
+                if (uploadError) {
+                    showToast('Gagal mengunggah media.');
+                    submitPromotePostButton.disabled = false;
+                    submitPromotePostButton.textContent = 'Promosikan';
+                    return;
+                }
+                const { data: urlData } = db.storage.from('media').getPublicUrl(fileName);
+                if (promoteImageFile) imageUrl = urlData.publicUrl;
+                if (promoteVideoFile) videoUrl = urlData.publicUrl;
+            }
+
+            const postData = {
+                content,
+                user_id: currentUser.id,
+                image_url: imageUrl,
+                video_url: videoUrl,
+                is_promotion: true,
+                promotion_link: link || null,
+                promotion_button_text: buttonText
+            };
+
+            const { data: newPost, error: insertError } = await db.from('posts').insert(postData).select().single();
+
+            if (insertError) {
+                showToast('Gagal mempromosikan postingan.');
+            } else {
+                showToast('Postingan berhasil dipromosikan!');
+                promoteContentInput.value = '';
+                promoteLinkInput.value = '';
+                promoteButtonTextInput.value = '';
+                promoteMediaPreview.innerHTML = '';
+                promoteImageFile = null;
+                promoteVideoFile = null;
+                closePromoteModalButton.click();
+                await fetchPosts();
+            }
+
+            submitPromotePostButton.disabled = false;
+            submitPromotePostButton.textContent = 'Promosikan';
+        });
+
+        // --- END: FIX for Promote Modal ---
+        
+        modalContent.addEventListener('click', async (e) => {
+            const replyBtn = e.target.closest('.reply-button');
+            if (replyBtn) {
+                const repliedToCommentId = replyBtn.dataset.commentId;
+                const repliedToUsername = replyBtn.dataset.username;
+                const repliedToComment = commentsById.get(repliedToCommentId);
+                let newParentId = repliedToCommentId;
+                let current = repliedToComment;
+                while (current && current.parent_comment_id) { newParentId = current.parent_comment_id; current = commentsById.get(newParentId); }
+                activeReplyTo = { parentId: newParentId, replyToUsernameForDisplay: repliedToUsername };
+                // FIX: escapeHTML pada username yang ditampilkan di banner.
+                replyingToBanner.innerHTML = `Membalas <strong>@${escapeHTML(activeReplyTo.replyToUsernameForDisplay)}</strong> <button class="font-bold ml-2" id="cancel-reply-btn">&times;</button>`;
+                replyingToBanner.classList.remove('hidden');
+                commentInput.focus();
+                document.getElementById('cancel-reply-btn').onclick = () => { activeReplyTo = null; replyingToBanner.classList.add('hidden'); };
+            }
+
+            const toggleBtn = e.target.closest('.toggle-replies-button');
+            if (toggleBtn) {
+                const repliesContainer = toggleBtn.nextElementSibling;
+                if (repliesContainer) {
+                    repliesContainer.classList.toggle('hidden');
+                    const isHidden = repliesContainer.classList.contains('hidden');
+                    const replyCount = toggleBtn.textContent.match(/\d+/)[0];
+                    toggleBtn.textContent = isHidden ? `Lihat ${replyCount} balasan` : 'Sembunyikan balasan';
+                }
+            }
+            
+            const likeCommentBtn = e.target.closest('.like-comment-button');
+            if (likeCommentBtn) {
+                const commentId = likeCommentBtn.dataset.commentId;
+                if(likeCommentBtn.disabled) return;
+                likeCommentBtn.disabled = true;
+                recentlyUpdatedCommentLikes.add(commentId);
+                setTimeout(() => recentlyUpdatedCommentLikes.delete(commentId), 2000);
+                const wasLiked = likeCommentBtn.dataset.liked === 'true';
+                const countSpan = likeCommentBtn.querySelector('.comment-like-count');
+                const icon = likeCommentBtn.querySelector('i');
+                const originalCount = parseInt(countSpan.textContent);
+                likeCommentBtn.dataset.liked = !wasLiked;
+                countSpan.textContent = wasLiked ? originalCount - 1 : originalCount + 1;
+                likeCommentBtn.classList.toggle('text-red-500', !wasLiked);
+                icon.classList.toggle('bi-heart-fill', !wasLiked);
+                icon.classList.toggle('bi-heart', wasLiked);
+                try {
+                    const { error } = await db.rpc('toggle_comment_like', { comment_id_to_toggle: commentId, user_id_to_toggle: currentUser.id });
+                    if (error) throw error;
+                } catch(error) {
+                    likeCommentBtn.dataset.liked = wasLiked;
+                    countSpan.textContent = originalCount;
+                    likeCommentBtn.classList.toggle('text-red-500', wasLiked);
+                    icon.classList.toggle('bi-heart-fill', wasLiked);
+                    icon.classList.toggle('bi-heart', !wasLiked);
+                    recentlyUpdatedCommentLikes.delete(commentId);
+                } finally {
+                    likeCommentBtn.disabled = false;
+                }
+            }
+            const pinCommentBtn = e.target.closest('.pin-comment-button');
+            if(pinCommentBtn) {
+                const commentId = pinCommentBtn.dataset.commentId;
+                const isPinned = !(pinCommentBtn.dataset.pinned === 'true');
+                await db.from('comments').update({ is_pinned: isPinned }).eq('id', commentId);
+                await openCommentModal(activePostForComment.id);
+            }
+            const deleteCommentBtn = e.target.closest('.delete-comment-button');
+            if(deleteCommentBtn) {
+                showConfirmModal('Komentar ini akan dihapus secara permanen.', async () => {
+                    await db.from('comments').delete().eq('id', deleteCommentBtn.dataset.commentId);
+                    await openCommentModal(activePostForComment.id);
+                });
+            }
+        });
+
+        submitCommentButton.addEventListener('click', async () => {
+            const content = commentInput.value.trim();
+            if (!content || !activePostForComment) return;
+            submitCommentButton.disabled = true;
+            const postElementOnTimeline = document.getElementById(`post-${activePostForComment.id}`);
+            if (postElementOnTimeline) postElementOnTimeline.querySelector('.comment-count').textContent = parseInt(postElementOnTimeline.querySelector('.comment-count').textContent) + 1;
+            const { ids: mentionedUserIds } = await parseMentions(content);
+            const parentCommentId = activeReplyTo ? activeReplyTo.parentId : null;
+            const replyToUsername = activeReplyTo ? activeReplyTo.replyToUsernameForDisplay : null;
+            const { data: newComment, error } = await db.from('comments').insert({ content, user_id: currentUser.id, post_id: activePostForComment.id, parent_comment_id: parentCommentId, reply_to_username: replyToUsername, mentioned_users: mentionedUserIds }).select('*, post:posts(user_id)').single();
+            if (error) { if (postElementOnTimeline) postElementOnTimeline.querySelector('.comment-count').textContent = parseInt(postElementOnTimeline.querySelector('.comment-count').textContent) - 1; } else {
+                const postOwnerId = newComment.post.user_id;
+                if (postOwnerId !== currentUser.id) await db.from('notifications').insert({ recipient_id: postOwnerId, actor_id: currentUser.id, notification_type: 'comment', post_id: activePostForComment.id });
+                if (mentionedUserIds.length > 0) {
+                    const notifications = mentionedUserIds.map(userId => ({ recipient_id: userId, actor_id: currentUser.id, notification_type: 'mention_comment', post_id: activePostForComment.id }));
+                    await db.from('notifications').insert(notifications);
+                }
+                commentInput.value = '';
+                activeReplyTo = null; 
+                replyingToBanner.classList.add('hidden');
+                await openCommentModal(activePostForComment.id);
+            }
+            submitCommentButton.disabled = false;
+        });
+
+        closeModalButton.addEventListener('click', () => {
+            const videoInModal = modalContent.querySelector('video');
+            if (videoInModal) { videoInModal.pause(); videoInModal.src = ''; }
+            commentModal.classList.remove('is-visible');
+            setTimeout(() => {
+                commentModal.classList.add('hidden');
+                commentModal.classList.remove('flex');
+                modalContent.innerHTML = ''; 
+                activePostForComment = null;
+                activeReplyTo = null;
+                replyingToBanner.classList.add('hidden');
+                setupVideoAutoplay();
+            }, 250);
+        });
+
+        function resetComposerStyle() { 
+            isFullTextMode = false; fullTextColor = ''; fullTextFont = ''; 
+            postContentInput.className = 'w-full p-2 text-lg border-none focus:ring-0 resize-none transition-all duration-300 bg-transparent dark:text-slate-100 dark:placeholder-slate-500'; postContentInput.style.color = ''; postContentInput.rows = 3; 
+        }
+        function updateComposerFullTextStyle() { 
+            isPollMode = false; pollCreatorContainer.classList.add('hidden'); pollButton.classList.remove('text-orange-500');
+            postImageFile = null; postVideoFile = null; imageUploadInput.value = ''; videoUploadInput.value = ''; mediaPreviewContainer.innerHTML = ''; postContentInput.className = `w-full p-8 text-lg border-none focus:ring-0 resize-none rounded-lg text-center flex items-center justify-center text-white transition-all duration-300 ${fullTextColor} ${fullTextFont}`; postContentInput.style.color = 'white'; postContentInput.rows = 5; 
+            validatePostButton();
+        }
+        
+        document.getElementById('logout-button').addEventListener('click', async () => { if (db) { await db.auth.signOut(); } window.location.href = 'auth.html'; });
+        
+        forYouTab.addEventListener('click', () => switchTab('for-you'));
+        followingTab.addEventListener('click', () => switchTab('following'));
+
+        // --- Bug Hunter Sheet Logic ---
+        function hideBugHunterSheet() {
+            bugHunterSheet.classList.remove('is-visible');
+            localStorage.setItem('bugHunterSheetClosed', 'true');
+        }
+
+        closeBugSheetButton.addEventListener('click', hideBugHunterSheet);
+        bugHunterSheet.addEventListener('click', (e) => {
+            if (e.target === bugHunterSheet) {
+                hideBugHunterSheet();
+            }
+        });
+        // --- End Bug Hunter Sheet Logic ---
+
+        async function initializeApp() {
+            try {
+                const response = await fetch('/api/config');
+                if (!response.ok) throw new Error('Network response was not ok');
+                const config = await response.json();
+                if (!config.supabaseUrl || !config.supabaseAnonKey) throw new Error('Supabase config is missing');
+                db = createClient(config.supabaseUrl, config.supabaseAnonKey);
+                initialize();
+                window.addEventListener('resize', updateTabUI); 
+            } catch (error) {
+                console.error("Initialization Error:", error);
+                document.body.innerHTML = `<div class="text-center p-12"><h1 class="font-bold text-xl">Koneksi Gagal</h1><p class="text-gray-600 dark:text-slate-400">Tidak dapat terhubung ke server. Silakan coba lagi nanti.</p></div>`;
+            }
+        }
+
+        initializeApp();
+    </script>
+</body>
+</html>
