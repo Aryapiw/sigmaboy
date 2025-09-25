@@ -18,10 +18,11 @@ export default function handler(request, response) {
   // GANTI BAGIAN allowedOrigins DENGAN KODE DI BAWAH INI
 
 // Daftar domain yang diizinkan untuk mengakses API ini
+// GANTI MENJADI SEPERTI INI
 const allowedOrigins = [
-  'http://localhost:3000', // Untuk development di komputer Anda
-  process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null
-].filter(Boolean); // Menghapus nilai null jika tidak ada (misal saat di localhost)
+  "https://sigmaboy-ecru.vercel.app", // <-- URL BARU ANDA DARI VERCEL
+  "http://localhost:3000"
+];
 
   const refererOrigin = referer ? new URL(referer).origin : null;
   const isAllowedReferer = refererOrigin && allowedOrigins.includes(refererOrigin);
