@@ -15,10 +15,13 @@ export default function handler(request, response) {
 
   // --- KONDISI 2: Pengecekan Cadangan (Fallback) menggunakan Referer ---
   // Definisikan semua origin/domain yang diizinkan dari environment variables
-  const allowedOrigins = [
-    process.env.SITE_URL ? `https://${process.env.SITE_URL}` : null,
-    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
-  ].filter(Boolean); // Hapus nilai null jika ada
+  // GANTI BAGIAN allowedOrigins DENGAN KODE DI BAWAH INI
+
+// Daftar domain yang diizinkan untuk mengakses API ini
+const allowedOrigins = [
+  'http://localhost:3000', // Untuk development di komputer Anda
+  process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null
+].filter(Boolean); // Menghapus nilai null jika tidak ada (misal saat di localhost)
 
   const refererOrigin = referer ? new URL(referer).origin : null;
   const isAllowedReferer = refererOrigin && allowedOrigins.includes(refererOrigin);
